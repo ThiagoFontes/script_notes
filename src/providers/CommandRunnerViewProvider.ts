@@ -123,6 +123,7 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
             commandIds?: string[];
             folderIds?: string[];
             commandList?: CommandItem[];
+            folderList?: Folder[];
             folderId?: string;
             commandId?: string;
             newName?: string;
@@ -216,6 +217,12 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                 case 'runFolder':
                     if (message.folderId && message.commandIds) {
                         vscode.commands.executeCommand('scriptnotes.runFolder', message.folderId, message.commandIds);
+                    }
+                    break;
+                case 'reorderFolders':
+                    if (message.folderList) {
+                        setFolderList(message.folderList);
+                        await this.saveFolders();
                     }
                     break;
                 case 'moveCommandToFolder':

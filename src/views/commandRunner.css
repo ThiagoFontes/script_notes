@@ -75,11 +75,7 @@ body {
     transition: background-color 0.2s ease;
 }
 
-.command-list.root-drop-zone {
-    background-color: var(--vscode-list-dropBackground);
-    border: 2px dashed var(--vscode-focusBorder);
-    border-radius: 4px;
-}
+
 
 .command-item {
     display: flex;
@@ -101,11 +97,9 @@ body {
 
 .command-item.dragging {
     opacity: 0.5;
-    border: 1px dashed var(--vscode-focusBorder);
 }
 
 .command-item.drag-over {
-    border: 1px dashed var(--vscode-focusBorder);
     background-color: var(--vscode-list-dropBackground);
 }
 
@@ -291,7 +285,6 @@ body {
 
 .folder-drop-zone {
     background-color: var(--vscode-list-dropBackground);
-    border: 2px dashed var(--vscode-focusBorder);
 }
 
 .folder-empty {
@@ -300,4 +293,41 @@ body {
     padding: 0.5em;
     text-align: center;
     font-size: 0.9em;
+}
+
+/* Drop indicator for folder reordering */
+.drop-indicator {
+    height: 2px;
+    background-color: var(--vscode-focusBorder);
+    margin: 2px 0;
+    border-radius: 1px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    position: relative;
+}
+
+.drop-indicator.active {
+    opacity: 1;
+}
+
+.drop-indicator::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: -2px;
+    width: 6px;
+    height: 6px;
+    background-color: var(--vscode-focusBorder);
+    border-radius: 50%;
+}
+
+.drop-indicator::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: -2px;
+    width: 6px;
+    height: 6px;
+    background-color: var(--vscode-focusBorder);
+    border-radius: 50%;
 }

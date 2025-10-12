@@ -35,6 +35,13 @@ export function generateCommandRunnerHtml(): string {
     <script>
         const vscode = acquireVsCodeApi();
         let state = { commandList: [], folderList: [] };
+        let isProcessingDrop = false;
+
+        function resetDropFlag() {
+            setTimeout(() => {
+                isProcessingDrop = false;
+            }, 10);
+        }
 
         function addCommand() {
             vscode.postMessage({ command: 'addCommand' });
@@ -196,6 +203,53 @@ export function generateCommandRunnerHtml(): string {
 
         // Drag and drop handlers
         let draggedItem = null;
+        let dropIndicator = null;
+
+        // Create drop indicator element
+        function createDropIndicator() {
+            if (!dropIndicator) {
+                dropIndicator = document.createElement('div');
+                dropIndicator.className = 'drop-indicator';
+            }
+            return dropIndicator;
+        }
+
+        // Show drop indicator at specific position
+        function showDropIndicator(targetElement, position) {
+            const indicator = createDropIndicator();
+            indicator.classList.add('active');
+            
+            if (position === 'before') {
+                targetElement.parentNode.insertBefore(indicator, targetElement);
+            } else if (position === 'after') {
+                if (targetElement.nextSibling) {
+                    targetElement.parentNode.insertBefore(indicator, targetElement.nextSibling);
+                } else {
+                    targetElement.parentNode.appendChild(indicator);
+                }
+            } else if (position === 'first') {
+                const container = document.getElementById('commandList');
+                container.insertBefore(indicator, container.firstChild);
+            } else if (position === 'last') {
+                const container = document.getElementById('commandList');
+                container.appendChild(indicator);
+            }
+        }
+
+        // Hide drop indicator
+        function hideDropIndicator() {
+            if (dropIndicator && dropIndicator.parentNode) {
+                dropIndicator.classList.remove('active');
+                dropIndicator.parentNode.removeChild(dropIndicator);
+            }
+        }
+
+        function handleFolderDragStart(e) {
+            draggedItem = e.target;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', 'folder:' + e.target.getAttribute('data-folder-id'));
+        }
 
         function handleDragStart(e) {
             draggedItem = e.target;
@@ -207,6 +261,54 @@ export function generateCommandRunnerHtml(): string {
         function handleDragOver(e) {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
+            
+            // Show drop indicator for folder reordering
+            const draggedData = draggedItem?.getAttribute('data-folder-id');
+            if (draggedData && draggedItem.classList.contains('folder-item')) {
+                hideDropIndicator(); // Clear previous indicator
+                
+                const folderTarget = e.target.closest('.folder-item');
+                const containerTarget = e.target.closest('#commandList');
+                
+                if (folderTarget && folderTarget.getAttribute('data-folder-id') !== draggedData) {
+                    // Determine position based on mouse location
+                    const rect = folderTarget.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    
+                    if (e.clientY < midY) {
+                        showDropIndicator(folderTarget, 'before');
+                    } else {
+                        showDropIndicator(folderTarget, 'after');
+                    }
+                } else if (containerTarget) {
+                    // Check if dropping outside folders
+                    const allFolders = containerTarget.querySelectorAll('.folder-item');
+                    let topFolder = null;
+                    let bottomFolder = null;
+                    
+                    allFolders.forEach(folder => {
+                        if (folder.getAttribute('data-folder-id') !== draggedData) {
+                            if (!topFolder || folder.getBoundingClientRect().top < topFolder.getBoundingClientRect().top) {
+                                topFolder = folder;
+                            }
+                            if (!bottomFolder || folder.getBoundingClientRect().bottom > bottomFolder.getBoundingClientRect().bottom) {
+                                bottomFolder = folder;
+                            }
+                        }
+                    });
+                    
+                    if (topFolder && bottomFolder) {
+                        const topRect = topFolder.getBoundingClientRect();
+                        const bottomRect = bottomFolder.getBoundingClientRect();
+                        
+                        if (e.clientY < topRect.top) {
+                            showDropIndicator(null, 'first');
+                        } else if (e.clientY > bottomRect.bottom) {
+                            showDropIndicator(null, 'last');
+                        }
+                    }
+                }
+            }
         }
 
         function handleDragEnter(e) {
@@ -239,19 +341,171 @@ export function generateCommandRunnerHtml(): string {
             }
             if (containerTarget && !containerTarget.contains(e.relatedTarget)) {
                 containerTarget.classList.remove('root-drop-zone');
+                hideDropIndicator(); // Hide drop indicator when leaving container
             }
         }
 
         function handleDrop(e) {
             e.preventDefault();
-            const draggedId = e.dataTransfer.getData('text/plain');
+            e.stopPropagation(); // Prevent event bubbling to avoid duplicate handling
+            
+            // Prevent rapid successive drops
+            if (isProcessingDrop) {
+                console.log('Drop already being processed, ignoring');
+                return;
+            }
+            isProcessingDrop = true;
+            
+            hideDropIndicator(); // Hide indicator when drop occurs
+            const draggedData = e.dataTransfer.getData('text/plain');
             
             console.log('Drop event:', {
                 target: e.target,
-                draggedId: draggedId,
+                draggedData: draggedData,
                 targetClasses: e.target.className,
                 targetId: e.target.id
             });
+
+            // Check if we're dragging a folder
+            const isDraggingFolder = draggedData.startsWith('folder:');
+            const draggedId = isDraggingFolder ? draggedData.replace('folder:', '') : draggedData;
+            
+            // Handle folder reordering
+            if (isDraggingFolder) {
+                const dropTarget = e.target.closest('.folder-item');
+                const containerTarget = e.target.closest('#commandList');
+                
+                if (dropTarget && dropTarget.getAttribute('data-folder-id') !== draggedId) {
+                    console.log('Reordering folders');
+                    const dropFolderId = dropTarget.getAttribute('data-folder-id');
+                    
+                    // Find folder indices
+                    const draggedIndex = state.folderList.findIndex(folder => folder.id === draggedId);
+                    const dropIndex = state.folderList.findIndex(folder => folder.id === dropFolderId);
+                    
+                    if (draggedIndex !== -1 && dropIndex !== -1) {
+                        // Determine if we should insert before or after the drop target
+                        const rect = dropTarget.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        const shouldInsertAfter = e.clientY > midY;
+                        
+                        // Calculate target insert position BEFORE any array modifications
+                        let targetInsertIndex;
+                        if (shouldInsertAfter) {
+                            targetInsertIndex = dropIndex + 1;
+                        } else {
+                            targetInsertIndex = dropIndex;
+                        }
+                        
+                        // Adjust for the removal of the dragged item
+                        if (draggedIndex < targetInsertIndex) {
+                            targetInsertIndex -= 1;
+                        }
+                        
+                        console.log('Folder reorder calculation:', {
+                            draggedIndex,
+                            dropIndex,
+                            shouldInsertAfter,
+                            targetInsertIndex: targetInsertIndex,
+                            draggedFolder: state.folderList[draggedIndex]?.name,
+                            targetFolder: state.folderList[dropIndex]?.name
+                        });
+                        
+                        // Remove the dragged folder
+                        const [removed] = state.folderList.splice(draggedIndex, 1);
+                        
+                        // Insert at the calculated position
+                        state.folderList.splice(targetInsertIndex, 0, removed);
+                        
+                        // Update order property for persistence
+                        state.folderList.forEach((folder, index) => {
+                            folder.order = index;
+                        });
+                        
+                        // Send message to update folder order
+                        vscode.postMessage({ 
+                            command: 'reorderFolders', 
+                            folderList: state.folderList 
+                        });
+                        
+                        // Re-render
+                        renderCommandsAndFolders();
+                        resetDropFlag();
+                        return;
+                    }
+                } else if (containerTarget) {
+                    // Dropping outside folders but within container - determine top or bottom
+                    console.log('Dropping folder outside folders');
+                    const draggedIndex = state.folderList.findIndex(folder => folder.id === draggedId);
+                    
+                    if (draggedIndex !== -1) {
+                        const containerRect = containerTarget.getBoundingClientRect();
+                        const allFolders = containerTarget.querySelectorAll('.folder-item');
+                        
+                        // Remove the dragged folder from calculations
+                        const [removed] = state.folderList.splice(draggedIndex, 1);
+                        
+                        if (allFolders.length > 1) {
+                            // Find the topmost and bottommost folders (excluding the dragged one)
+                            let topFolder = null;
+                            let bottomFolder = null;
+                            
+                            allFolders.forEach(folder => {
+                                if (folder.getAttribute('data-folder-id') !== draggedId) {
+                                    if (!topFolder || folder.getBoundingClientRect().top < topFolder.getBoundingClientRect().top) {
+                                        topFolder = folder;
+                                    }
+                                    if (!bottomFolder || folder.getBoundingClientRect().bottom > bottomFolder.getBoundingClientRect().bottom) {
+                                        bottomFolder = folder;
+                                    }
+                                }
+                            });
+                            
+                            if (topFolder && bottomFolder) {
+                                const topFolderRect = topFolder.getBoundingClientRect();
+                                const bottomFolderRect = bottomFolder.getBoundingClientRect();
+                                
+                                if (e.clientY < topFolderRect.top) {
+                                    // Dropped above all folders - insert at beginning
+                                    console.log('Inserting at beginning');
+                                    state.folderList.unshift(removed);
+                                } else if (e.clientY > bottomFolderRect.bottom) {
+                                    // Dropped below all folders - insert at end
+                                    console.log('Inserting at end');
+                                    state.folderList.push(removed);
+                                } else {
+                                    // Dropped somewhere in between - add to end as fallback
+                                    state.folderList.push(removed);
+                                }
+                            } else {
+                                // Fallback - add to end
+                                state.folderList.push(removed);
+                            }
+                        } else {
+                            // Only one folder (the dragged one) - just put it back
+                            state.folderList.push(removed);
+                        }
+                        
+                        // Update order property
+                        state.folderList.forEach((folder, index) => {
+                            folder.order = index;
+                        });
+                        
+                        // Send message to update folder order
+                        vscode.postMessage({ 
+                            command: 'reorderFolders', 
+                            folderList: state.folderList 
+                        });
+                        
+                        // Re-render
+                        renderCommandsAndFolders();
+                        resetDropFlag();
+                        return;
+                    }
+                }
+                resetDropFlag();
+                return; // Don't continue with command logic if dragging folder
+            }
             
             // Priority 1: Check if dropping on a command for reordering (and not the dragged command itself)
             const dropTarget = e.target.closest('.command-item');
@@ -278,6 +532,7 @@ export function generateCommandRunnerHtml(): string {
                         command: 'reorderCommands',
                         commandList: state.commandList
                     });
+                    resetDropFlag();
                     return;
                 }
             }
@@ -293,6 +548,7 @@ export function generateCommandRunnerHtml(): string {
                     commandId: draggedId,
                     folderId: folderId
                 });
+                resetDropFlag();
                 return;
             }
 
@@ -309,11 +565,13 @@ export function generateCommandRunnerHtml(): string {
                         commandId: draggedId,
                         folderId: undefined // undefined means root level
                     });
+                    resetDropFlag();
                     return;
                 }
             }
             
             console.log('No drop action taken');
+            resetDropFlag();
         }
 
         function handleDragEnd(e) {
@@ -325,6 +583,7 @@ export function generateCommandRunnerHtml(): string {
                 item.classList.remove('folder-drop-zone');
             });
             document.getElementById('commandList')?.classList.remove('root-drop-zone');
+            hideDropIndicator(); // Hide drop indicator when drag ends
         }
 
         // Set up drag and drop for the main container (to handle dropping outside folders)
@@ -353,7 +612,7 @@ export function generateCommandRunnerHtml(): string {
             const container = document.getElementById('commandList');
             container.innerHTML = '';
             
-            const folders = state.folderList || [];
+            const folders = (state.folderList || []).sort((a, b) => (a.order || 0) - (b.order || 0));
             const commands = state.commandList || [];
             
             // Render folders first
@@ -361,7 +620,7 @@ export function generateCommandRunnerHtml(): string {
                 const folderDiv = document.createElement('div');
                 folderDiv.className = 'folder-item';
                 folderDiv.setAttribute('data-folder-id', folder.id);
-                folderDiv.draggable = false;
+                folderDiv.draggable = true;
                 
                 const folderCommands = commands.filter(cmd => cmd.folderId === folder.id);
                 const isExpanded = folder.expanded;
@@ -384,6 +643,7 @@ export function generateCommandRunnerHtml(): string {
                 \`;
                 
                 // Add drag and drop listeners to folder
+                folderDiv.addEventListener('dragstart', handleFolderDragStart);
                 folderDiv.addEventListener('dragover', handleDragOver);
                 folderDiv.addEventListener('dragenter', handleDragEnter);
                 folderDiv.addEventListener('dragleave', handleDragLeave);
