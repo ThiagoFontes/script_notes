@@ -16,6 +16,7 @@ let commandList: CommandItem[] = [];
 // Create the main webview provider class
 class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 	private _view?: vscode.WebviewView;
+	private _isExportView: boolean = false;
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
@@ -43,12 +44,21 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 
 	public updateWebview(): void {
 		if (this._view) {
+			this._isExportView = false;
+			this._view.webview.html = this._getHtmlForWebview();
 			this._view.webview.postMessage({ command: 'update', commandList });
 		}
 	}
 
+	public showExportView(): void {
+		if (this._view) {
+			this._isExportView = true;
+			this._view.webview.html = this._getExportHtmlForWebview(commandList);
+		}
+	}
+
 	private _setWebviewMessageListener(webview: vscode.Webview): void {
-		webview.onDidReceiveMessage(async (message: { command: string; id?: string }) => {
+		webview.onDidReceiveMessage(async (message: { command: string; id?: string; commandIds?: string[] }) => {
 			switch (message.command) {
 				case 'addCommand':
 					vscode.commands.executeCommand('scriptnotes.addCommand');
@@ -80,8 +90,132 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 						}
 					}
 					break;
+				case 'exportCommands':
+					this.showExportView();
+					break;
+				case 'confirmExport':
+					if (message.commandIds && message.commandIds.length > 0) {
+						const selectedCommands = commandList.filter(cmd => message.commandIds?.includes(cmd.id));
+						vscode.commands.executeCommand('scriptnotes.exportCommands', selectedCommands);
+					}
+					this.updateWebview(); // Return to normal view
+					break;
+				case 'cancelExport':
+					this.updateWebview(); // Return to normal view
+					break;
+				case 'importCommands':
+					vscode.commands.executeCommand('scriptnotes.importCommands');
+					break;
 			}
 		});
+	}
+
+	private _getExportHtmlForWebview(commands: CommandItem[]): string {
+		return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+                <title>Export Commands</title>
+                <style>
+                    body { 
+                        font-family: var(--vscode-font-family);
+                        margin: 0;
+                        padding: 0.5em;
+                        color: var(--vscode-foreground);
+                    }
+                    .export-view {
+                        padding: 1em;
+                    }
+                    .export-header {
+                        margin-bottom: 1em;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    .export-title {
+                        font-size: 1.2em;
+                        font-weight: 500;
+                    }
+                    .export-list {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5em;
+                        margin: 1em 0;
+                    }
+                    .export-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5em;
+                        padding: 0.5em;
+                        border: 1px solid var(--vscode-widget-border);
+                        border-radius: 3px;
+                    }
+                    .export-item:hover {
+                        background-color: var(--vscode-list-hoverBackground);
+                    }
+                    .export-checkbox {
+                        margin: 0;
+                    }
+                    .export-actions {
+                        margin-top: 1em;
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 0.5em;
+                    }
+                    .btn {
+                        padding: 4px 12px;
+                        border-radius: 3px;
+                        border: none;
+                        cursor: pointer;
+                    }
+                    .btn-primary {
+                        background-color: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                    }
+                    .btn-secondary {
+                        background-color: var(--vscode-button-secondaryBackground);
+                        color: var(--vscode-button-secondaryForeground);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="export-view">
+                    <div class="export-header">
+                        <div class="export-title">Select Commands to Export</div>
+                    </div>
+                    <div class="export-list">
+                        ${commands.map(cmd => `
+                            <div class="export-item">
+                                <input type="checkbox" class="export-checkbox" value="${cmd.id}" id="cmd-${cmd.id}">
+                                <label for="cmd-${cmd.id}">${cmd.label}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="export-actions">
+                        <button class="btn btn-secondary" onclick="cancelExport()">Cancel</button>
+                        <button class="btn btn-primary" onclick="confirmExport()">Export Selected</button>
+                    </div>
+                </div>
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    
+                    function confirmExport() {
+                        const selectedIds = Array.from(document.querySelectorAll('.export-checkbox:checked'))
+                            .map(cb => cb.value);
+                        vscode.postMessage({ 
+                            command: 'confirmExport',
+                            commandIds: selectedIds
+                        });
+                    }
+                    
+                    function cancelExport() {
+                        vscode.postMessage({ command: 'cancelExport' });
+                    }
+                </script>
+            </body>
+            </html>`;
 	}
 
 	private _getHtmlForWebview(): string {
@@ -91,7 +225,7 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-                <title>Script Notes</title>
+                <title>Command Runner</title>
                 <style>
                     body { 
                         font-family: var(--vscode-font-family);
@@ -101,8 +235,56 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     }
                     .header {
                         display: flex;
-                        justify-content: flex-end;
+                        justify-content: stretch;
                         margin-bottom: 0.5em;
+                    }
+                    .header .icon-btn {
+                        flex: 1;
+                    }
+                    .actions-bar {
+                        display: flex;
+                        gap: 4px;
+                        margin-bottom: 0.5em;
+                        padding: 0.25em 0;
+                        border-bottom: 1px solid var(--vscode-widget-border);
+                    }
+                    .export-view {
+                        padding: 1em;
+                    }
+                    .export-header {
+                        margin-bottom: 1em;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    .export-title {
+                        font-size: 1.2em;
+                        font-weight: 500;
+                    }
+                    .export-list {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5em;
+                    }
+                    .export-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5em;
+                        padding: 0.5em;
+                        border: 1px solid var(--vscode-widget-border);
+                        border-radius: 3px;
+                    }
+                    .export-item:hover {
+                        background-color: var(--vscode-list-hoverBackground);
+                    }
+                    .export-checkbox {
+                        margin: 0;
+                    }
+                    .export-actions {
+                        margin-top: 1em;
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 0.5em;
                     }
                     .command-list { margin-top: 0.5em; }
                     .command-item { 
@@ -191,6 +373,16 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                         <span>New Command</span>
                     </button>
                 </div>
+                <div class="actions-bar">
+                    <button class="icon-btn" title="Import Commands" onclick="importCommands()">
+                        <span>↓</span>
+                        <span>Import</span>
+                    </button>
+                    <button class="icon-btn" title="Export Commands" onclick="exportCommands()">
+                        <span>↑</span>
+                        <span>Export</span>
+                    </button>
+                </div>
                 <div class="command-list" id="commandList"></div>
                 <script>
                     const vscode = acquireVsCodeApi();
@@ -207,6 +399,23 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     }
                     function runCommand(id) {
                         vscode.postMessage({ command: 'runCommand', id });
+                    }
+                    function importCommands() {
+                        vscode.postMessage({ command: 'importCommands' });
+                    }
+                    function exportCommands() {
+                        vscode.postMessage({ command: 'exportCommands' });
+                    }
+                    function confirmExport() {
+                        const selectedIds = Array.from(document.querySelectorAll('.export-checkbox:checked'))
+                            .map(cb => cb.value);
+                        vscode.postMessage({ 
+                            command: 'confirmExport',
+                            commandIds: selectedIds
+                        });
+                    }
+                    function cancelExport() {
+                        vscode.postMessage({ command: 'cancelExport' });
                     }
 
                     // Listen for messages from the extension
@@ -401,6 +610,86 @@ export function activate(context: vscode.ExtensionContext): void {
 				new vscode.ShellExecution(fullCommand)
 			);
 			vscode.tasks.executeTask(task);
+		}),
+		vscode.commands.registerCommand('scriptnotes.exportCommands', async (items: CommandItem[]) => {
+			const options: vscode.SaveDialogOptions = {
+				defaultUri: vscode.Uri.file('commands.json'),
+				filters: {
+					'JSON files': ['json']
+				}
+			};
+
+			const uri = await vscode.window.showSaveDialog(options);
+			if (uri) {
+				try {
+					const data = JSON.stringify(items, null, 2);
+					await vscode.workspace.fs.writeFile(uri, Buffer.from(data));
+					vscode.window.showInformationMessage('Commands exported successfully!');
+				} catch (error) {
+					vscode.window.showErrorMessage('Failed to export commands: ' + (error instanceof Error ? error.message : String(error)));
+				}
+			}
+		}),
+		vscode.commands.registerCommand('scriptnotes.importCommands', async () => {
+			const options: vscode.OpenDialogOptions = {
+				canSelectFiles: true,
+				canSelectFolders: false,
+				canSelectMany: false,
+				filters: {
+					'JSON files': ['json']
+				},
+				title: 'Import Commands'
+			};
+
+			const fileUri = await vscode.window.showOpenDialog(options);
+			if (fileUri && fileUri[0]) {
+				try {
+					const fileContent = await vscode.workspace.fs.readFile(fileUri[0]);
+					const importedCommands = JSON.parse(fileContent.toString()) as CommandItem[];
+
+					// Validate imported data
+					const isValid = importedCommands.every(cmd =>
+						typeof cmd.id === 'string' &&
+						typeof cmd.label === 'string' &&
+						typeof cmd.shell === 'string' &&
+						Array.isArray(cmd.flags) &&
+						Array.isArray(cmd.argumentPrompts) &&
+						typeof cmd.alwaysPrompt === 'boolean'
+					);
+
+					if (!isValid) {
+						throw new Error('Invalid command format in import file');
+					}
+
+					// Ask if user wants to replace or merge
+					const choice = await vscode.window.showQuickPick(
+						[
+							{ label: 'Replace all commands', description: 'Remove existing commands and add imported ones' },
+							{ label: 'Merge with existing', description: 'Add imported commands to the existing list' }
+						],
+						{
+							placeHolder: 'How would you like to import the commands?'
+						}
+					);
+
+					if (choice) {
+						if (choice.label === 'Replace all commands') {
+							commandList = [...importedCommands];
+						} else {
+							// For merge, we'll generate new IDs to avoid conflicts
+							const newCommands = importedCommands.map(cmd => ({
+								...cmd,
+								id: Date.now().toString() + Math.random().toString(36).slice(2)
+							}));
+							commandList = [...commandList, ...newCommands];
+						}
+						commandProvider.updateWebview();
+						vscode.window.showInformationMessage('Commands imported successfully!');
+					}
+				} catch (error) {
+					vscode.window.showErrorMessage('Failed to import commands: ' + (error instanceof Error ? error.message : String(error)));
+				}
+			}
 		})
 	);
 
