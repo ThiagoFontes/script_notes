@@ -73,10 +73,10 @@ export async function runFolderCommand(folderId: string, commandIds: string[]): 
     try {
         const storage = getCommandStorage();
         const commands = storage.loadCommands();
-        
+
         // Filter to get only the commands in this folder
         const folderCommands = commands.filter((cmd: CommandItem) => commandIds.includes(cmd.id));
-        
+
         if (folderCommands.length === 0) {
             vscode.window.showInformationMessage('No commands found in this folder.');
             return;
