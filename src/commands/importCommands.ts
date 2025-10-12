@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { CommandItem, Folder } from '../models/CommandItem';
-import { getCommandList, setCommandList, getCommandStorage } from '../providers/CommandRunnerViewProvider';
+import { getCommandList, setCommandList, getCommandStorage, setFolderList, getFolderList } from '../providers/CommandRunnerViewProvider';
 
 export async function importCommands(commandProvider: any): Promise<void> {
     const options: vscode.OpenDialogOptions = {
@@ -73,40 +73,51 @@ export async function importCommands(commandProvider: any): Promise<void> {
                 if (choice.label === 'Replace all') {
                     // Replace everything
                     setCommandList([...importedCommands]);
+                    setFolderList([...importedFolders]); // Update in-memory folder list
                     await storage.saveFolders(importedFolders);
+
+                    // Debug logging
+                    console.log('Replaced with folders:', importedFolders.length);
+                    console.log('Folders:', importedFolders.map(f => ({ id: f.id, name: f.name })));
                 } else {
                     // Merge - generate new IDs to avoid conflicts
+                    // First create a mapping of old folder IDs to new folder IDs
+                    const folderIdMap = new Map();
+                    const newFolders = importedFolders.map(folder => {
+                        const newId = Date.now().toString() + Math.random().toString(36).slice(2);
+                        folderIdMap.set(folder.id, newId);
+                        return {
+                            ...folder,
+                            id: newId
+                        };
+                    });
+
+                    // Create new commands with updated folder references
                     const newCommands = importedCommands.map(cmd => ({
                         ...cmd,
                         id: Date.now().toString() + Math.random().toString(36).slice(2),
-                        // If command was in a folder, we need to update the folderId reference
-                        folderId: cmd.folderId ? (Date.now().toString() + Math.random().toString(36).slice(2) + '_folder') : undefined
+                        // Update folderId to match new folder ID if command was in a folder
+                        folderId: cmd.folderId && folderIdMap.has(cmd.folderId) ? folderIdMap.get(cmd.folderId) : cmd.folderId
                     }));
 
-                    const newFolders = importedFolders.map(folder => ({
-                        ...folder,
-                        id: Date.now().toString() + Math.random().toString(36).slice(2) + '_folder'
-                    }));
-
-                    // Update command folderIds to match new folder IDs
-                    const folderIdMap = new Map();
-                    importedFolders.forEach((oldFolder, index) => {
-                        folderIdMap.set(oldFolder.id, newFolders[index].id);
-                    });
-
-                    newCommands.forEach(cmd => {
-                        if (cmd.folderId && folderIdMap.has(cmd.folderId)) {
-                            cmd.folderId = folderIdMap.get(cmd.folderId);
-                        }
-                    });
-
+                    // Add to existing data
                     setCommandList([...getCommandList(), ...newCommands]);
-                    const existingFolders = storage.loadFolders();
-                    await storage.saveFolders([...existingFolders, ...newFolders]);
+                    const existingFolders = getFolderList(); // Use in-memory list instead of loading from storage
+                    const allFolders = [...existingFolders, ...newFolders];
+                    setFolderList(allFolders); // Update in-memory folder list
+                    await storage.saveFolders(allFolders);
+
+                    // Debug logging
+                    console.log('Imported folders:', newFolders.length);
+                    console.log('Existing folders:', existingFolders.length);
+                    console.log('Total folders after import:', allFolders.length);
+                    console.log('All folders:', allFolders.map(f => ({ id: f.id, name: f.name })));
                 }
 
+                // Refresh the webview to show the imported data
                 await commandProvider.updateWebview();
-                const itemsCount = importedCommands.length + importedFolders.length;
+                await commandProvider.refresh();
+
                 vscode.window.showInformationMessage(`Successfully imported ${importedCommands.length} commands and ${importedFolders.length} folders!`);
             }
         } catch (error) {

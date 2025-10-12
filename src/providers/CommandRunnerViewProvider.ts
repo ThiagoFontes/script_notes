@@ -75,7 +75,7 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 
     private async loadCommands(): Promise<void> {
         const savedCommands = await commandStorage.loadCommands();
-        const savedFolders = await commandStorage.loadFolders();
+        const savedFolders = commandStorage.loadFolders(); // Remove await - this is synchronous
 
         if (savedCommands) {
             commandList = savedCommands;
@@ -83,6 +83,10 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
         if (savedFolders) {
             folderList = savedFolders;
         }
+
+        // Debug logging
+        console.log('Loaded folders count:', folderList.length);
+        console.log('Loaded folders:', folderList.map(f => ({ id: f.id, name: f.name })));
 
         await this.updateWebview();
     }

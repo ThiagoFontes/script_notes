@@ -50,6 +50,9 @@ export function generateExportViewHtml(commands: CommandItem[], folders: Folder[
             background-color: var(--vscode-list-inactiveSelectionBackground);
         }
         .export-command {
+            /* No margin for root-level commands */
+        }
+        .export-command.in-folder {
             margin-left: 1.5em;
         }
         .folder-icon {
@@ -97,7 +100,7 @@ export function generateExportViewHtml(commands: CommandItem[], folders: Folder[
                         </label>
                     </div>
                     ${folderCommands.map(cmd => `
-                        <div class="export-item export-command">
+                        <div class="export-item export-command in-folder">
                             <input type="checkbox" class="export-checkbox command-checkbox" value="${cmd.id}" id="cmd-${cmd.id}" data-type="command" data-folder-id="${folder.id}">
                             <label for="cmd-${cmd.id}">${cmd.label}</label>
                         </div>
