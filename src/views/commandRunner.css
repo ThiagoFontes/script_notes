@@ -1,0 +1,300 @@
+body {
+    font-family: var(--vscode-font-family);
+    margin: 0;
+    padding: 0.5em;
+    color: var(--vscode-foreground);
+}
+
+.header {
+    display: flex;
+    justify-content: stretch;
+    margin-bottom: 0.5em;
+}
+
+.header .icon-btn {
+    flex: 1;
+}
+
+.actions-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0.5em;
+    padding: 0.25em 0;
+    border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+.export-view {
+    padding: 1em;
+}
+
+.export-header {
+    margin-bottom: 1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.export-title {
+    font-size: 1.2em;
+    font-weight: 500;
+}
+
+.export-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.export-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.5em;
+    border: 1px solid var(--vscode-widget-border);
+    border-radius: 3px;
+}
+
+.export-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.export-checkbox {
+    margin: 0;
+}
+
+.export-actions {
+    margin-top: 1em;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5em;
+}
+
+.command-list {
+    margin-top: 0.5em;
+    min-height: 100px;
+    transition: background-color 0.2s ease;
+}
+
+.command-list.root-drop-zone {
+    background-color: var(--vscode-list-dropBackground);
+    border: 2px dashed var(--vscode-focusBorder);
+    border-radius: 4px;
+}
+
+.command-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.5em;
+    border-radius: 3px;
+    transition: all 0.1s ease;
+    margin: 4px 0;
+    border: 1px solid var(--vscode-widget-border);
+    background-color: var(--vscode-editor-background);
+    cursor: grab;
+}
+
+.command-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+    border-color: var(--vscode-focusBorder);
+}
+
+.command-item.dragging {
+    opacity: 0.5;
+    border: 1px dashed var(--vscode-focusBorder);
+}
+
+.command-item.drag-over {
+    border: 1px dashed var(--vscode-focusBorder);
+    background-color: var(--vscode-list-dropBackground);
+}
+
+.drag-handle {
+    color: var(--vscode-disabledForeground);
+    cursor: grab;
+    user-select: none;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    border-left: 1px solid var(--vscode-widget-border);
+    margin-left: 4px;
+    opacity: 0.6;
+}
+
+.command-item:hover .drag-handle {
+    opacity: 1;
+}
+
+.command-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.command-label {
+    font-weight: 500;
+    padding-bottom: 0.3em;
+    color: var(--vscode-editor-foreground);
+}
+
+.actions {
+    display: flex;
+    gap: 4px;
+    border-top: 1px solid var(--vscode-widget-border);
+    margin-top: 0.3em;
+    padding-top: 0.3em;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    color: var(--vscode-editor-foreground);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+}
+
+.icon-btn:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
+    color: var(--vscode-button-foreground);
+}
+
+.icon-btn.add {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    padding: 6px 12px;
+}
+
+.icon-btn.add:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.icon-btn.add-folder {
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    padding: 6px 12px;
+}
+
+.icon-btn.add-folder:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.icon-btn.edit {
+    background-color: var(--vscode-button-secondaryBackground);
+}
+
+.icon-btn.run {
+    background-color: var(--vscode-button-secondaryBackground);
+}
+
+.icon-btn.delete {
+    background-color: var(--vscode-button-secondaryBackground);
+}
+
+.icon-btn.edit:hover {
+    background-color: var(--vscode-symbolIcon-functionForeground);
+    color: var(--vscode-button-foreground);
+}
+
+.icon-btn.run:hover {
+    background-color: var(--vscode-testing-iconPassed);
+    color: var(--vscode-button-foreground);
+}
+
+.icon-btn.delete:hover {
+    background-color: var(--vscode-errorForeground);
+    color: var(--vscode-button-foreground);
+}
+
+.empty-message {
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+    padding: 0.5em;
+    margin: 1em 0;
+    text-align: center;
+    border: 1px dashed var(--vscode-widget-border);
+    border-radius: 3px;
+}
+
+.folder-item {
+    margin: 4px 0;
+    border: 1px solid var(--vscode-widget-border);
+    border-radius: 3px;
+    background-color: var(--vscode-editor-background);
+}
+
+.folder-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5em;
+    cursor: pointer;
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border-radius: 3px 3px 0 0;
+}
+
+.folder-header:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.folder-icon {
+    margin-right: 8px;
+    font-size: 0.9em;
+    user-select: none;
+}
+
+.folder-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.folder-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0.7;
+}
+
+.folder-actions button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 0.8em;
+}
+
+.folder-actions button:hover {
+    background-color: var(--vscode-button-background);
+    opacity: 1;
+}
+
+.folder-content {
+    padding: 0 0.5em 0.5em 1.5em;
+    border-top: 1px solid var(--vscode-widget-border);
+}
+
+.folder-content.collapsed {
+    display: none;
+}
+
+.folder-drop-zone {
+    background-color: var(--vscode-list-dropBackground);
+    border: 2px dashed var(--vscode-focusBorder);
+}
+
+.folder-empty {
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+    padding: 0.5em;
+    text-align: center;
+    font-size: 0.9em;
+}
