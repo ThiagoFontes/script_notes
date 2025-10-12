@@ -10,7 +10,10 @@ export interface CommandItem {
 	alwaysPrompt: boolean;
 }
 
-// In-memory store for commands (replace with persistent storage later)
+// Storage key for commands
+const COMMANDS_STORAGE_KEY = 'scriptnotes.commands';
+
+// Persistent store for commands
 let commandList: CommandItem[] = [];
 
 // Create the main webview provider class
@@ -20,6 +23,7 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
+		private readonly _extensionContext: vscode.ExtensionContext
 	) { }
 
 	public resolveWebviewView(
@@ -37,9 +41,30 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 		webviewView.title = "Script Notes";
 		webviewView.description = "Manage and run shell commands";
 
+		// Add visibility change listener
+		webviewView.onDidChangeVisibility(() => {
+			if (webviewView.visible) {
+				this.loadCommands();
+				this.updateWebview();
+			}
+		});
+
 		webviewView.webview.html = this._getHtmlForWebview();
 		this._setWebviewMessageListener(webviewView.webview);
+		this.loadCommands(); // Load saved commands first
 		this.updateWebview();
+	}
+
+	private saveCommands(): void {
+		this._extensionContext.globalState.update(COMMANDS_STORAGE_KEY, commandList);
+	}
+
+	private loadCommands(): void {
+		const savedCommands = this._extensionContext.globalState.get<CommandItem[]>(COMMANDS_STORAGE_KEY);
+		if (savedCommands) {
+			commandList = savedCommands;
+			this.updateWebview();
+		}
 	}
 
 	public updateWebview(): void {
@@ -48,6 +73,7 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 			this._view.webview.html = this._getHtmlForWebview();
 			this._view.webview.postMessage({ command: 'update', commandList });
 		}
+		this.saveCommands();
 	}
 
 	public showExportView(): void {
@@ -467,7 +493,7 @@ let commandProvider: CommandRunnerViewProvider;
 // Extension activation
 export function activate(context: vscode.ExtensionContext): void {
 	// Create and register the webview provider first so it's available for commands
-	commandProvider = new CommandRunnerViewProvider(context.extensionUri);
+	commandProvider = new CommandRunnerViewProvider(context.extensionUri, context);
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider('commandRunnerWebview', commandProvider)
 	);
