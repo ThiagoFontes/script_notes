@@ -82,16 +82,97 @@ export function generateCommandRunnerHtml(): string {
         }
         function renameFolder(folderId) {
             const folderElement = document.querySelector('[data-folder-id="' + folderId + '"] .folder-name');
-            const currentName = folderElement.textContent;
-            const newName = prompt('Enter new folder name:', currentName);
-            if (newName && newName.trim() !== '' && newName !== currentName) {
-                vscode.postMessage({ command: 'renameFolder', folderId, newName: newName.trim() });
+            if (!folderElement) {
+                return;
             }
+            const currentName = folderElement.textContent;
+            
+            // Create inline input for renaming
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentName;
+            input.className = 'folder-rename-input';
+            input.style.cssText = \`
+                background: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                border: 1px solid var(--vscode-input-border);
+                padding: 2px 4px;
+                font-size: inherit;
+                font-family: inherit;
+                width: 150px;
+            \`;
+            
+            // Replace folder name with input
+            folderElement.style.display = 'none';
+            folderElement.parentNode.insertBefore(input, folderElement.nextSibling);
+            input.focus();
+            input.select();
+            
+            // Handle input completion
+            function completeRename() {
+                const newName = input.value.trim();
+                input.remove();
+                folderElement.style.display = '';
+                
+                if (newName && newName !== currentName) {
+                    vscode.postMessage({ command: 'renameFolder', folderId, newName });
+                }
+            }
+            
+            // Handle input cancellation
+            function cancelRename() {
+                input.remove();
+                folderElement.style.display = '';
+            }
+            
+            input.addEventListener('blur', completeRename);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    completeRename();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelRename();
+                }
+            });
         }
         function deleteFolder(folderId) {
-            if (confirm('Delete this folder? All commands in it will be moved to the root level.')) {
+            const folderElement = document.querySelector('[data-folder-id="' + folderId + '"]');
+            if (!folderElement) return;
+            
+            const deleteButton = folderElement.querySelector('button[onclick*="deleteFolder"]');
+            if (!deleteButton) return;
+            
+            // Change button to show confirmation
+            const originalText = deleteButton.innerHTML;
+            const originalTitle = deleteButton.title;
+            deleteButton.innerHTML = '✓';
+            deleteButton.title = 'Click again to confirm deletion';
+            deleteButton.style.color = 'var(--vscode-errorForeground)';
+            
+            // Create new click handler for confirmation
+            const confirmHandler = function(e) {
+                e.stopPropagation();
                 vscode.postMessage({ command: 'deleteFolder', folderId });
-            }
+                // Reset button
+                deleteButton.innerHTML = originalText;
+                deleteButton.title = originalTitle;
+                deleteButton.style.color = '';
+                deleteButton.removeEventListener('click', confirmHandler);
+            };
+            
+            // Reset button after 3 seconds if not clicked
+            const resetTimeout = setTimeout(() => {
+                deleteButton.innerHTML = originalText;
+                deleteButton.title = originalTitle;
+                deleteButton.style.color = '';
+                deleteButton.removeEventListener('click', confirmHandler);
+            }, 3000);
+            
+            deleteButton.addEventListener('click', confirmHandler);
+            
+            // Clear timeout if confirmed quickly
+            deleteButton.addEventListener('click', () => clearTimeout(resetTimeout), { once: true });
         }
 
         // Drag and drop handlers
@@ -271,8 +352,8 @@ export function generateCommandRunnerHtml(): string {
                         <span class="folder-icon">\${isExpanded ? '📂' : '📁'}</span>
                         <span class="folder-name">\${folder.name}</span>
                         <div class="folder-actions" onclick="event.stopPropagation()">
-                            <button onclick="renameFolder('\${folder.id}')" title="Rename">✎</button>
-                            <button onclick="deleteFolder('\${folder.id}')" title="Delete">✖</button>
+                            <button onclick="event.stopPropagation(); renameFolder('\${folder.id}')" title="Rename">✎</button>
+                            <button onclick="event.stopPropagation(); deleteFolder('\${folder.id}')" title="Delete">✖</button>
                         </div>
                     </div>
                     <div class="folder-content \${isExpanded ? '' : 'collapsed'}" id="folder-\${folder.id}">
