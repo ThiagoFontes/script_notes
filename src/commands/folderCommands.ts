@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { getCommandStorage } from '../providers/CommandRunnerViewProvider';
+import { CommandItem } from '../models/CommandItem';
 
 /**
  * Command to toggle folder expanded/collapsed state
@@ -62,5 +63,40 @@ export async function moveCommandToFolderCommand(commandId: string, folderId: st
         vscode.commands.executeCommand('scriptnotes.refresh');
     } catch (error) {
         vscode.window.showErrorMessage('Failed to move command: ' + (error instanceof Error ? error.message : String(error)));
+    }
+}
+
+/**
+ * Command to run all commands in a folder sequentially
+ */
+export async function runFolderCommand(folderId: string, commandIds: string[]): Promise<void> {
+    try {
+        const storage = getCommandStorage();
+        const commands = storage.loadCommands();
+        
+        // Filter to get only the commands in this folder
+        const folderCommands = commands.filter((cmd: CommandItem) => commandIds.includes(cmd.id));
+        
+        if (folderCommands.length === 0) {
+            vscode.window.showInformationMessage('No commands found in this folder.');
+            return;
+        }
+
+        vscode.window.showInformationMessage(`Running ${folderCommands.length} commands from folder...`);
+
+        // Run commands sequentially
+        for (const command of folderCommands) {
+            try {
+                // Use the existing runCommand functionality with the full command object
+                await vscode.commands.executeCommand('scriptnotes.runCommand', command);
+            } catch (error) {
+                vscode.window.showWarningMessage(`Failed to run command "${command.label}": ${error instanceof Error ? error.message : String(error)}`);
+                // Continue with the next command even if one fails
+            }
+        }
+
+        vscode.window.showInformationMessage('Finished running all folder commands.');
+    } catch (error) {
+        vscode.window.showErrorMessage('Failed to run folder commands: ' + (error instanceof Error ? error.message : String(error)));
     }
 }

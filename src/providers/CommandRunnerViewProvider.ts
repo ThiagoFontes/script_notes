@@ -193,6 +193,11 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                         vscode.commands.executeCommand('scriptnotes.deleteFolder', message.folderId);
                     }
                     break;
+                case 'runFolder':
+                    if (message.folderId && message.commandIds) {
+                        vscode.commands.executeCommand('scriptnotes.runFolder', message.folderId, message.commandIds);
+                    }
+                    break;
                 case 'moveCommandToFolder':
                     if (message.commandId) {
                         vscode.commands.executeCommand('scriptnotes.moveCommandToFolder', message.commandId, message.folderId);

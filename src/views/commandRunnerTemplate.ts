@@ -175,6 +175,25 @@ export function generateCommandRunnerHtml(): string {
             deleteButton.addEventListener('click', () => clearTimeout(resetTimeout), { once: true });
         }
 
+        function runFolder(folderId) {
+            // Get all commands in this folder
+            const folderCommands = state.commandList.filter(cmd => cmd.folderId === folderId);
+            
+            if (folderCommands.length === 0) {
+                return;
+            }
+
+            // Sort commands by their order in the folder (if they have an order property)
+            folderCommands.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            // Run commands sequentially
+            vscode.postMessage({ 
+                command: 'runFolder', 
+                folderId: folderId,
+                commandIds: folderCommands.map(cmd => cmd.id)
+            });
+        }
+
         // Drag and drop handlers
         let draggedItem = null;
 
@@ -352,8 +371,9 @@ export function generateCommandRunnerHtml(): string {
                         <span class="folder-icon">\${isExpanded ? '📂' : '📁'}</span>
                         <span class="folder-name">\${folder.name}</span>
                         <div class="folder-actions" onclick="event.stopPropagation()">
+                            <button class="icon-btn run" onclick="event.stopPropagation(); runFolder('\${folder.id}')" title="Run all commands in folder">▶︎</button>
                             <button class="icon-btn edit" onclick="event.stopPropagation(); renameFolder('\${folder.id}')" title="Rename">✎</button>
-                            <button class="icon-btn delete" onclick="event.stopPropagation(); deleteFolder('\${folder.id}')" title="Delete">✖</button>
+                            <button class="icon-btn delete" onclick="event.stopPropagation(); deleteFolder('\${folder.id}')" title="Delete">⛌</button>
                         </div>
                     </div>
                     <div class="folder-content \${isExpanded ? '' : 'collapsed'}" id="folder-\${folder.id}">

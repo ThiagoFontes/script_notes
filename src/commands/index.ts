@@ -6,7 +6,7 @@ import { runCommand } from './runCommand.js';
 import { exportCommands } from './exportCommands.js';
 import { importCommands } from './importCommands.js';
 import { addFolderCommand } from './addFolder.js';
-import { toggleFolderCommand, renameFolderCommand, deleteFolderCommand, moveCommandToFolderCommand } from './folderCommands.js';
+import { toggleFolderCommand, renameFolderCommand, deleteFolderCommand, moveCommandToFolderCommand, runFolderCommand } from './folderCommands.js';
 
 export function registerCommands(context: vscode.ExtensionContext, commandProvider: any): void {
     context.subscriptions.push(
@@ -20,6 +20,7 @@ export function registerCommands(context: vscode.ExtensionContext, commandProvid
         vscode.commands.registerCommand('scriptnotes.toggleFolder', toggleFolderCommand),
         vscode.commands.registerCommand('scriptnotes.renameFolder', renameFolderCommand),
         vscode.commands.registerCommand('scriptnotes.deleteFolder', deleteFolderCommand),
+        vscode.commands.registerCommand('scriptnotes.runFolder', runFolderCommand),
         vscode.commands.registerCommand('scriptnotes.moveCommandToFolder', moveCommandToFolderCommand),
         vscode.commands.registerCommand('scriptnotes.refresh', () => commandProvider.refresh())
     );
