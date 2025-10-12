@@ -196,4 +196,94 @@ suite('Command Utilities Test Suite', () => {
 		// This would be tested with actual async functions in practice
 		assert.ok(typeof safeAsync === 'function');
 	});
+
+	// Test folder validation utility
+	test('Folder validation utility', () => {
+		const validateFolder = (folder: any): boolean => {
+			return (
+				typeof folder.id === 'string' &&
+				typeof folder.name === 'string' &&
+				typeof folder.expanded === 'boolean' &&
+				typeof folder.order === 'number'
+			);
+		};
+
+		// Valid folder
+		const validFolder = {
+			id: 'folder-1',
+			name: 'Build Scripts',
+			expanded: true,
+			order: 0
+		};
+		assert.ok(validateFolder(validFolder));
+
+		// Invalid folders
+		const invalidFolders = [
+			{ id: 1, name: 'Test', expanded: true, order: 0 }, // Invalid id type
+			{ id: 'folder-1', expanded: true, order: 0 }, // Missing name
+			{ id: 'folder-1', name: 'Test', order: 0 }, // Missing expanded
+			{ id: 'folder-1', name: 'Test', expanded: true }, // Missing order
+			{ id: 'folder-1', name: 123, expanded: true, order: 0 }, // Invalid name type
+			{ id: 'folder-1', name: 'Test', expanded: 'yes', order: 0 }, // Invalid expanded type
+			{ id: 'folder-1', name: 'Test', expanded: true, order: '0' }, // Invalid order type
+		];
+
+		invalidFolders.forEach((folder, index) => {
+			assert.ok(!validateFolder(folder), `Invalid folder ${index} should fail validation`);
+		});
+	});
+
+	// Test command-folder relationship utility
+	test('Command-folder relationship utility', () => {
+		const getCommandsInFolder = (commands: any[], folderId: string) => {
+			return commands.filter(cmd => cmd.folderId === folderId);
+		};
+
+		const getUnorganizedCommands = (commands: any[]) => {
+			return commands.filter(cmd => !cmd.folderId);
+		};
+
+		const commands = [
+			{ id: '1', label: 'Root Command', shell: 'echo 1', flags: [], argumentPrompts: [], alwaysPrompt: false },
+			{ id: '2', label: 'Folder Command', shell: 'echo 2', flags: [], argumentPrompts: [], alwaysPrompt: false, folderId: 'folder-1' },
+			{ id: '3', label: 'Another Folder Command', shell: 'echo 3', flags: [], argumentPrompts: [], alwaysPrompt: false, folderId: 'folder-1' },
+			{ id: '4', label: 'Different Folder', shell: 'echo 4', flags: [], argumentPrompts: [], alwaysPrompt: false, folderId: 'folder-2' },
+		];
+
+		// Test commands in folder
+		const folder1Commands = getCommandsInFolder(commands, 'folder-1');
+		assert.strictEqual(folder1Commands.length, 2);
+		assert.ok(folder1Commands.some(cmd => cmd.id === '2'));
+		assert.ok(folder1Commands.some(cmd => cmd.id === '3'));
+
+		// Test unorganized commands  
+		const unorganized = getUnorganizedCommands(commands);
+		assert.strictEqual(unorganized.length, 1);
+		assert.strictEqual(unorganized[0].id, '1');
+
+		// Test empty folder
+		const emptyFolder = getCommandsInFolder(commands, 'non-existent');
+		assert.strictEqual(emptyFolder.length, 0);
+	});
+
+	// Test folder ordering utility
+	test('Folder ordering utility', () => {
+		const sortFoldersByOrder = (folders: any[]) => {
+			return [...folders].sort((a, b) => a.order - b.order);
+		};
+
+		const folders = [
+			{ id: 'folder-3', name: 'Third', expanded: true, order: 2 },
+			{ id: 'folder-1', name: 'First', expanded: true, order: 0 },
+			{ id: 'folder-2', name: 'Second', expanded: false, order: 1 },
+		];
+
+		const sorted = sortFoldersByOrder(folders);
+		assert.strictEqual(sorted[0].name, 'First');
+		assert.strictEqual(sorted[1].name, 'Second');
+		assert.strictEqual(sorted[2].name, 'Third');
+
+		// Ensure original array is not modified
+		assert.strictEqual(folders[0].name, 'Third');
+	});
 });

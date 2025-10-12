@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
-import { CommandItem } from '../models/CommandItem';
+import { CommandItem, Folder } from '../models/CommandItem';
 import { CommandStorage } from '../utils/CommandStorage';
 import { generateCommandRunnerHtml, generateExportViewHtml } from '../views';
 
 // This needs to be shared between the provider and extension
 // We'll export a function to access it
 let commandList: CommandItem[] = [];
+let folderList: Folder[] = [];
 let commandStorage: CommandStorage;
 
 export function getCommandList(): CommandItem[] {
@@ -14,6 +15,14 @@ export function getCommandList(): CommandItem[] {
 
 export function setCommandList(newCommandList: CommandItem[]): void {
     commandList = newCommandList;
+}
+
+export function getFolderList(): Folder[] {
+    return folderList;
+}
+
+export function setFolderList(newFolderList: Folder[]): void {
+    folderList = newFolderList;
 }
 
 export function getCommandStorage(): CommandStorage {
@@ -66,19 +75,34 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 
     private async loadCommands(): Promise<void> {
         const savedCommands = await commandStorage.loadCommands();
+        const savedFolders = await commandStorage.loadFolders();
+
         if (savedCommands) {
             commandList = savedCommands;
-            await this.updateWebview();
         }
+        if (savedFolders) {
+            folderList = savedFolders;
+        }
+
+        await this.updateWebview();
     }
 
     public async updateWebview(): Promise<void> {
         if (this._view) {
             this._isExportView = false;
             this._view.webview.html = this._getHtmlForWebview();
-            this._view.webview.postMessage({ command: 'update', commandList });
+            this._view.webview.postMessage({ command: 'update', commandList, folderList });
         }
         await this.saveCommands();
+        await this.saveFolders();
+    }
+
+    public async refresh(): Promise<void> {
+        await this.loadCommands();
+    }
+
+    private async saveFolders(): Promise<void> {
+        await commandStorage.saveFolders(folderList);
     }
 
     public showExportView(): void {
@@ -94,6 +118,9 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
             id?: string;
             commandIds?: string[];
             commandList?: CommandItem[];
+            folderId?: string;
+            commandId?: string;
+            newName?: string;
         }) => {
             switch (message.command) {
                 case 'addCommand':
@@ -146,6 +173,29 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     if (message.commandList) {
                         commandList = message.commandList;
                         await this.updateWebview();
+                    }
+                    break;
+                case 'addFolder':
+                    vscode.commands.executeCommand('scriptnotes.addFolder');
+                    break;
+                case 'toggleFolder':
+                    if (message.folderId) {
+                        vscode.commands.executeCommand('scriptnotes.toggleFolder', message.folderId);
+                    }
+                    break;
+                case 'renameFolder':
+                    if (message.folderId && message.newName) {
+                        vscode.commands.executeCommand('scriptnotes.renameFolder', message.folderId, message.newName);
+                    }
+                    break;
+                case 'deleteFolder':
+                    if (message.folderId) {
+                        vscode.commands.executeCommand('scriptnotes.deleteFolder', message.folderId);
+                    }
+                    break;
+                case 'moveCommandToFolder':
+                    if (message.commandId) {
+                        vscode.commands.executeCommand('scriptnotes.moveCommandToFolder', message.commandId, message.folderId);
                     }
                     break;
             }
