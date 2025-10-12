@@ -84,7 +84,12 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
     }
 
     private _setWebviewMessageListener(webview: vscode.Webview): void {
-        webview.onDidReceiveMessage(async (message: { command: string; id?: string; commandIds?: string[] }) => {
+        webview.onDidReceiveMessage(async (message: {
+            command: string;
+            id?: string;
+            commandIds?: string[];
+            commandList?: CommandItem[];
+        }) => {
             switch (message.command) {
                 case 'addCommand':
                     vscode.commands.executeCommand('scriptnotes.addCommand');
@@ -131,6 +136,12 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     break;
                 case 'importCommands':
                     vscode.commands.executeCommand('scriptnotes.importCommands');
+                    break;
+                case 'reorderCommands':
+                    if (message.commandList) {
+                        commandList = message.commandList;
+                        this.updateWebview();
+                    }
                     break;
             }
         });
@@ -315,17 +326,47 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     .command-list { margin-top: 0.5em; }
                     .command-item { 
                         display: flex; 
-                        flex-direction: column;
+                        align-items: center;
+                        gap: 8px;
                         padding: 0.5em;
                         border-radius: 3px;
                         transition: all 0.1s ease;
                         margin: 4px 0;
                         border: 1px solid var(--vscode-widget-border);
                         background-color: var(--vscode-editor-background);
+                        cursor: grab;
                     }
                     .command-item:hover { 
                         background-color: var(--vscode-list-hoverBackground);
                         border-color: var(--vscode-focusBorder);
+                    }
+                    .command-item.dragging {
+                        opacity: 0.5;
+                        border: 1px dashed var(--vscode-focusBorder);
+                    }
+                    .command-item.drag-over {
+                        border: 1px dashed var(--vscode-focusBorder);
+                        background-color: var(--vscode-list-dropBackground);
+                    }
+                    .drag-handle {
+                        color: var(--vscode-disabledForeground);
+                        cursor: grab;
+                        user-select: none;
+                        padding: 0 8px;
+                        display: flex;
+                        align-items: center;
+                        border-left: 1px solid var(--vscode-widget-border);
+                        margin-left: 4px;
+                        opacity: 0.6;
+                    }
+                    .command-item:hover .drag-handle {
+                        opacity: 1;
+                    }
+                    .command-content {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        min-width: 0;
                     }
                     .command-label { 
                         font-weight: 500;
@@ -444,6 +485,62 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                         vscode.postMessage({ command: 'cancelExport' });
                     }
 
+                    // Drag and drop handlers
+                    let draggedItem = null;
+
+                    function handleDragStart(e) {
+                        draggedItem = e.target;
+                        e.target.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', e.target.getAttribute('data-id'));
+                    }
+
+                    function handleDragOver(e) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                    }
+
+                    function handleDragEnter(e) {
+                        e.target.closest('.command-item')?.classList.add('drag-over');
+                    }
+
+                    function handleDragLeave(e) {
+                        e.target.closest('.command-item')?.classList.remove('drag-over');
+                    }
+
+                    function handleDrop(e) {
+                        e.preventDefault();
+                        const dropTarget = e.target.closest('.command-item');
+                        if (!dropTarget) return;
+                        
+                        dropTarget.classList.remove('drag-over');
+                        const draggedId = e.dataTransfer.getData('text/plain');
+                        const dropId = dropTarget.getAttribute('data-id');
+                        
+                        if (draggedId === dropId) return;
+
+                        // Find indices
+                        const draggedIndex = state.commandList.findIndex(cmd => cmd.id === draggedId);
+                        const dropIndex = state.commandList.findIndex(cmd => cmd.id === dropId);
+
+                        // Reorder array
+                        const [removed] = state.commandList.splice(draggedIndex, 1);
+                        state.commandList.splice(dropIndex, 0, removed);
+
+                        // Update the view and notify extension
+                        vscode.postMessage({ 
+                            command: 'reorderCommands',
+                            commandList: state.commandList
+                        });
+                    }
+
+                    function handleDragEnd(e) {
+                        e.target.classList.remove('dragging');
+                        document.querySelectorAll('.command-item').forEach(item => {
+                            item.classList.remove('drag-over');
+                        });
+                    }
+
                     // Listen for messages from the extension
                     window.addEventListener('message', event => {
                         const { command, commandList } = event.data;
@@ -462,14 +559,28 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                             for (const cmd of commandList) {
                                 const div = document.createElement('div');
                                 div.className = 'command-item';
+                                div.draggable = true;
+                                div.setAttribute('data-id', cmd.id);
                                 div.innerHTML = \`
-                                    <span class="command-label">\${cmd.label}</span>
-                                    <div class="actions">
-                                        <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">⚙ Edit</button>
-                                        <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶ Run</button>
-                                        <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">× Delete</button>
+                                    <div class="command-content">
+                                        <span class="command-label">\${cmd.label}</span>
+                                        <div class="actions">
+                                            <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">⚙ Edit</button>
+                                            <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶ Run</button>
+                                            <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">× Delete</button>
+                                        </div>
                                     </div>
+                                    <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
                                 \`;
+
+                                // Add drag and drop event listeners
+                                div.addEventListener('dragstart', handleDragStart);
+                                div.addEventListener('dragover', handleDragOver);
+                                div.addEventListener('dragenter', handleDragEnter);
+                                div.addEventListener('dragleave', handleDragLeave);
+                                div.addEventListener('drop', handleDrop);
+                                div.addEventListener('dragend', handleDragEnd);
+                                
                                 container.appendChild(div);
                             }
                         }
