@@ -1,0 +1,77 @@
+{
+  "name": "scriptnotes",
+  "displayName": "Command Runner",
+  "description": "Manage and run a list of shell commands with editable items, flags, and user input for arguments. UI similar to test explorer.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:commandRunnerWebview"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "scriptnotes.helloWorld",
+        "title": "Hello World"
+      },
+      {
+        "command": "scriptnotes.addCommand",
+        "title": "Add Command"
+      },
+      {
+        "command": "scriptnotes.editCommand",
+        "title": "Edit Command"
+      },
+      {
+        "command": "scriptnotes.deleteCommand",
+        "title": "Delete Command"
+      },
+      {
+        "command": "scriptnotes.runCommand",
+        "title": "Run Command"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "scriptnotes",
+          "title": "Command Runner",
+          "icon": "$(terminal)"
+        }
+      ]
+    },
+    "views": {
+      "scriptnotes": [
+        {
+          "type": "webview",
+          "id": "commandRunnerWebview",
+          "name": "Command Runner"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.105.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "eslint": "^9.36.0",
+    "typescript": "^5.9.3",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
