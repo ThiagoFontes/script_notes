@@ -1,6 +1,6 @@
-import { CommandItem } from '../models/CommandItem';
+import { CommandItem, Folder } from '../models/CommandItem';
 
-export function generateExportViewHtml(commands: CommandItem[]): string {
+export function generateExportViewHtml(commands: CommandItem[], folders: Folder[]): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,6 +45,16 @@ export function generateExportViewHtml(commands: CommandItem[]): string {
         .export-item:hover {
             background-color: var(--vscode-list-hoverBackground);
         }
+        .export-folder {
+            font-weight: 500;
+            background-color: var(--vscode-list-inactiveSelectionBackground);
+        }
+        .export-command {
+            margin-left: 1.5em;
+        }
+        .folder-icon {
+            margin-right: 0.25em;
+        }
         .export-checkbox {
             margin: 0;
         }
@@ -76,9 +86,27 @@ export function generateExportViewHtml(commands: CommandItem[]): string {
             <div class="export-title">Select Commands to Export</div>
         </div>
         <div class="export-list">
-            ${commands.map(cmd => `
-                <div class="export-item">
-                    <input type="checkbox" class="export-checkbox" value="${cmd.id}" id="cmd-${cmd.id}">
+            ${folders.map(folder => {
+        const folderCommands = commands.filter(cmd => cmd.folderId === folder.id);
+        return `
+                    <div class="export-item export-folder">
+                        <input type="checkbox" class="export-checkbox folder-checkbox" value="${folder.id}" id="folder-${folder.id}" data-type="folder">
+                        <label for="folder-${folder.id}">
+                            <span class="folder-icon">📁</span>
+                            ${folder.name}
+                        </label>
+                    </div>
+                    ${folderCommands.map(cmd => `
+                        <div class="export-item export-command">
+                            <input type="checkbox" class="export-checkbox command-checkbox" value="${cmd.id}" id="cmd-${cmd.id}" data-type="command" data-folder-id="${folder.id}">
+                            <label for="cmd-${cmd.id}">${cmd.label}</label>
+                        </div>
+                    `).join('')}
+                `;
+    }).join('')}
+            ${commands.filter(cmd => !cmd.folderId).map(cmd => `
+                <div class="export-item export-command">
+                    <input type="checkbox" class="export-checkbox command-checkbox" value="${cmd.id}" id="cmd-${cmd.id}" data-type="command">
                     <label for="cmd-${cmd.id}">${cmd.label}</label>
                 </div>
             `).join('')}
@@ -91,12 +119,56 @@ export function generateExportViewHtml(commands: CommandItem[]): string {
     <script>
         const vscode = acquireVsCodeApi();
         
+        // Add event listeners when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add change listeners to all checkboxes
+            document.querySelectorAll('.export-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleCheckboxChange);
+            });
+        });
+        
+        function handleCheckboxChange(event) {
+            const checkbox = event.target;
+            const isFolder = checkbox.dataset.type === 'folder';
+            const isCommand = checkbox.dataset.type === 'command';
+            
+            if (isFolder) {
+                // When folder is clicked, select/deselect all commands in that folder
+                const folderId = checkbox.value;
+                const folderCommands = document.querySelectorAll(\`[data-folder-id="\${folderId}"]\`);
+                folderCommands.forEach(cmdCheckbox => {
+                    cmdCheckbox.checked = checkbox.checked;
+                });
+            } else if (isCommand) {
+                // When command is clicked, check if all commands in folder are selected
+                const folderId = checkbox.dataset.folderId;
+                if (folderId) {
+                    const folderCheckbox = document.querySelector(\`#folder-\${folderId}\`);
+                    const folderCommands = document.querySelectorAll(\`[data-folder-id="\${folderId}"]\`);
+                    const checkedCommands = document.querySelectorAll(\`[data-folder-id="\${folderId}"]:checked\`);
+                    
+                    if (folderCheckbox) {
+                        // If all commands are checked, check the folder
+                        if (checkedCommands.length === folderCommands.length) {
+                            folderCheckbox.checked = true;
+                        } else {
+                            folderCheckbox.checked = false;
+                        }
+                    }
+                }
+            }
+        }
+        
         function confirmExport() {
-            const selectedIds = Array.from(document.querySelectorAll('.export-checkbox:checked'))
+            const selectedCommands = Array.from(document.querySelectorAll('.command-checkbox:checked'))
                 .map(cb => cb.value);
+            const selectedFolders = Array.from(document.querySelectorAll('.folder-checkbox:checked'))
+                .map(cb => cb.value);
+                
             vscode.postMessage({ 
                 command: 'confirmExport',
-                commandIds: selectedIds
+                commandIds: selectedCommands,
+                folderIds: selectedFolders
             });
         }
         

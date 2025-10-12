@@ -117,6 +117,7 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
             command: string;
             id?: string;
             commandIds?: string[];
+            folderIds?: string[];
             commandList?: CommandItem[];
             folderId?: string;
             commandId?: string;
@@ -157,9 +158,24 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     this.showExportView();
                     break;
                 case 'confirmExport':
-                    if (message.commandIds && message.commandIds.length > 0) {
+                    if ((message.commandIds && message.commandIds.length > 0) || (message.folderIds && message.folderIds.length > 0)) {
                         const selectedCommands = commandList.filter(cmd => message.commandIds?.includes(cmd.id));
-                        vscode.commands.executeCommand('scriptnotes.exportCommands', selectedCommands);
+                        // Also include commands from selected folders
+                        const storage = getCommandStorage();
+                        const selectedFolders = storage.loadFolders().filter(folder => message.folderIds?.includes(folder.id));
+                        const commandsFromFolders = commandList.filter(cmd =>
+                            cmd.folderId && message.folderIds?.includes(cmd.folderId)
+                        );
+
+                        // Combine commands and remove duplicates
+                        const allCommands = [...selectedCommands];
+                        commandsFromFolders.forEach(cmd => {
+                            if (!allCommands.find(existing => existing.id === cmd.id)) {
+                                allCommands.push(cmd);
+                            }
+                        });
+
+                        vscode.commands.executeCommand('scriptnotes.exportCommands', allCommands);
                     }
                     await this.updateWebview(); // Return to normal view
                     break;
@@ -208,7 +224,9 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
     }
 
     private _getExportHtmlForWebview(commands: CommandItem[]): string {
-        return generateExportViewHtml(commands);
+        const storage = getCommandStorage();
+        const folders = storage.loadFolders();
+        return generateExportViewHtml(commands, folders);
     }
 
     private _getHtmlForWebview(): string {
