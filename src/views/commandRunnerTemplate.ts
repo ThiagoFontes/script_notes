@@ -271,8 +271,8 @@ export function generateCommandRunnerHtml(): string {
                         <span class="folder-icon">\${isExpanded ? '📂' : '📁'}</span>
                         <span class="folder-name">\${folder.name}</span>
                         <div class="folder-actions" onclick="event.stopPropagation()">
-                            <button onclick="renameFolder('\${folder.id}')" title="Rename">✏️</button>
-                            <button onclick="deleteFolder('\${folder.id}')" title="Delete">×</button>
+                            <button onclick="renameFolder('\${folder.id}')" title="Rename">✎</button>
+                            <button onclick="deleteFolder('\${folder.id}')" title="Delete">✖</button>
                         </div>
                     </div>
                     <div class="folder-content \${isExpanded ? '' : 'collapsed'}" id="folder-\${folder.id}">
@@ -326,9 +326,9 @@ export function generateCommandRunnerHtml(): string {
                     <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
                     <span class="command-label">\${cmd.label}</span>
                     <div class="actions">
-                        <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">⚙</button>
-                        <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶</button>
-                        <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">×</button>
+                        <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">✎</button>
+                        <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶︎</button>
+                        <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">✖</button>
                     </div>
                 </div>
             \`;
