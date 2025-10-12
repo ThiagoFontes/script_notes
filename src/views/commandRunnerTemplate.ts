@@ -262,15 +262,15 @@ export function generateCommandRunnerHtml(): string {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             
-            // Show drop indicator for folder reordering
-            const draggedData = draggedItem?.getAttribute('data-folder-id');
-            if (draggedData && draggedItem.classList.contains('folder-item')) {
-                hideDropIndicator(); // Clear previous indicator
-                
+            hideDropIndicator(); // Clear previous indicator
+            
+            // Check if dragging a folder
+            const draggedFolderId = draggedItem?.getAttribute('data-folder-id');
+            if (draggedFolderId && draggedItem.classList.contains('folder-item')) {
                 const folderTarget = e.target.closest('.folder-item');
                 const containerTarget = e.target.closest('#commandList');
                 
-                if (folderTarget && folderTarget.getAttribute('data-folder-id') !== draggedData) {
+                if (folderTarget && folderTarget.getAttribute('data-folder-id') !== draggedFolderId) {
                     // Determine position based on mouse location
                     const rect = folderTarget.getBoundingClientRect();
                     const midY = rect.top + rect.height / 2;
@@ -287,7 +287,7 @@ export function generateCommandRunnerHtml(): string {
                     let bottomFolder = null;
                     
                     allFolders.forEach(folder => {
-                        if (folder.getAttribute('data-folder-id') !== draggedData) {
+                        if (folder.getAttribute('data-folder-id') !== draggedFolderId) {
                             if (!topFolder || folder.getBoundingClientRect().top < topFolder.getBoundingClientRect().top) {
                                 topFolder = folder;
                             }
@@ -305,6 +305,30 @@ export function generateCommandRunnerHtml(): string {
                             showDropIndicator(null, 'first');
                         } else if (e.clientY > bottomRect.bottom) {
                             showDropIndicator(null, 'last');
+                        }
+                    }
+                }
+            }
+            // Check if dragging a command
+            else if (draggedItem && draggedItem.classList.contains('command-item')) {
+                const draggedCommandId = draggedItem.getAttribute('data-id');
+                const commandTarget = e.target.closest('.command-item');
+                
+                if (commandTarget && commandTarget.getAttribute('data-id') !== draggedCommandId) {
+                    // Check if both commands are in the same parent (same folder or both in root)
+                    const draggedCommand = state.commandList.find(cmd => cmd.id === draggedCommandId);
+                    const targetCommandId = commandTarget.getAttribute('data-id');
+                    const targetCommand = state.commandList.find(cmd => cmd.id === targetCommandId);
+                    
+                    if (draggedCommand && targetCommand && draggedCommand.folderId === targetCommand.folderId) {
+                        // Determine position based on mouse location
+                        const rect = commandTarget.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        
+                        if (e.clientY < midY) {
+                            showDropIndicator(commandTarget, 'before');
+                        } else {
+                            showDropIndicator(commandTarget, 'after');
                         }
                     }
                 }
@@ -523,9 +547,36 @@ export function generateCommandRunnerHtml(): string {
                 const dropCmd = state.commandList[dropIndex];
                 
                 if (draggedCmd.folderId === dropCmd.folderId) {
+                    // Determine if we should insert before or after the drop target
+                    const rect = dropTarget.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    const shouldInsertAfter = e.clientY > midY;
+                    
+                    // Calculate target insert position BEFORE any array modifications
+                    let targetInsertIndex;
+                    if (shouldInsertAfter) {
+                        targetInsertIndex = dropIndex + 1;
+                    } else {
+                        targetInsertIndex = dropIndex;
+                    }
+                    
+                    // Adjust for the removal of the dragged item
+                    if (draggedIndex < targetInsertIndex) {
+                        targetInsertIndex -= 1;
+                    }
+                    
+                    console.log('Command reorder calculation:', {
+                        draggedIndex,
+                        dropIndex,
+                        shouldInsertAfter,
+                        targetInsertIndex: targetInsertIndex,
+                        draggedCommand: draggedCmd.label,
+                        targetCommand: dropCmd.label
+                    });
+                    
                     // Reorder array
                     const [removed] = state.commandList.splice(draggedIndex, 1);
-                    state.commandList.splice(dropIndex, 0, removed);
+                    state.commandList.splice(targetInsertIndex, 0, removed);
 
                     // Update the view and notify extension
                     vscode.postMessage({ 
