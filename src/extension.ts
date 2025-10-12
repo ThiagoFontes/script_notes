@@ -834,47 +834,57 @@ export function activate(context: vscode.ExtensionContext): void {
     // Register command handlers
     context.subscriptions.push(
         vscode.commands.registerCommand('scriptnotes.addCommand', async () => {
-            const label = await vscode.window.showInputBox({
-                prompt: 'Command label',
-                placeHolder: 'Enter a name for your command'
-            });
-            if (!label) { return; }
+            // Create a new blank command
+            const newCommand: CommandItem = {
+                id: Date.now().toString(),
+                label: '',
+                shell: '',
+                flags: [],
+                argumentPrompts: [],
+                alwaysPrompt: false
+            };
 
-            const shell = await vscode.window.showInputBox({
-                prompt: 'Shell command',
-                placeHolder: 'Enter the shell command to run'
-            });
-            if (!shell) { return; }
-
-            const flagsRaw = await vscode.window.showInputBox({
-                prompt: 'Flags (comma separated)',
-                placeHolder: 'Example: -v, --force'
-            });
-            const flags = flagsRaw ? flagsRaw.split(',').map(f => f.trim()).filter(f => f) : [];
-
-            const argsRaw = await vscode.window.showInputBox({
-                prompt: 'Argument prompts (comma separated)',
-                placeHolder: 'Example: File path, Branch name'
-            });
-            const argumentPrompts = argsRaw ? argsRaw.split(',').map(a => a.trim()).filter(a => a) : [];
-
-            const alwaysPromptResult = await vscode.window.showQuickPick(
-                [{ label: 'Yes' }, { label: 'No' }],
+            // Create and show a new webview panel
+            const panel = vscode.window.createWebviewPanel(
+                'commandEditor',
+                'Add New Command',
+                vscode.ViewColumn.One,
                 {
-                    placeHolder: 'Always prompt for arguments when running this command?'
+                    enableScripts: true,
+                    retainContextWhenHidden: true
                 }
             );
 
-            // Log the result to help debug
-            console.log('QuickPick result:', alwaysPromptResult);
-            const alwaysPrompt = alwaysPromptResult?.label === 'Yes';
-            console.log('alwaysPrompt value:', alwaysPrompt);
+            // Reuse the CommandEditorProvider but with save handling for new command
+            const provider = new CommandEditorProvider(context);
+            await provider.resolveWebviewPanel(panel, newCommand);
 
-            const id = Date.now().toString();
-            const newCommand = { id, label, shell, flags, argumentPrompts, alwaysPrompt };
-            console.log('New command:', newCommand);
-            commandList.push(newCommand);
-            commandProvider.updateWebview();
+            // Override the message handler for adding new command
+            panel.webview.onDidReceiveMessage(
+                async (message) => {
+                    switch (message.type) {
+                        case 'save':
+                            try {
+                                const command = message.command;
+                                // Keep the original ID
+                                command.id = newCommand.id;
+                                // Add the new command to the list
+                                commandList.push(command);
+                                commandProvider.updateWebview();
+                                panel.dispose();
+                                vscode.window.showInformationMessage('Command added successfully!');
+                            } catch (error) {
+                                vscode.window.showErrorMessage('Failed to add command: ' + (error instanceof Error ? error.message : String(error)));
+                            }
+                            break;
+                        case 'cancel':
+                            panel.dispose();
+                            break;
+                    }
+                },
+                undefined,
+                context.subscriptions
+            );
         }),
         vscode.commands.registerCommand('scriptnotes.editCommand', async (item: CommandItem) => {
             // Create and show a new webview panel
