@@ -352,8 +352,8 @@ export function generateCommandRunnerHtml(): string {
                         <span class="folder-icon">\${isExpanded ? '📂' : '📁'}</span>
                         <span class="folder-name">\${folder.name}</span>
                         <div class="folder-actions" onclick="event.stopPropagation()">
-                            <button onclick="event.stopPropagation(); renameFolder('\${folder.id}')" title="Rename">✎</button>
-                            <button onclick="event.stopPropagation(); deleteFolder('\${folder.id}')" title="Delete">✖</button>
+                            <button class="icon-btn edit" onclick="event.stopPropagation(); renameFolder('\${folder.id}')" title="Rename">✎</button>
+                            <button class="icon-btn delete" onclick="event.stopPropagation(); deleteFolder('\${folder.id}')" title="Delete">✖</button>
                         </div>
                     </div>
                     <div class="folder-content \${isExpanded ? '' : 'collapsed'}" id="folder-\${folder.id}">
