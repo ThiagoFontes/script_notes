@@ -1,6 +1,6 @@
 {
   "name": "scriptnotes",
-  "displayName": "Command Runner",
+  "displayName": "Script Notes",
   "description": "Manage and run a list of shell commands with editable items, flags, and user input for arguments. UI similar to test explorer.",
   "version": "0.0.1",
   "engines": {
@@ -14,33 +14,11 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "scriptnotes.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "scriptnotes.addCommand",
-        "title": "Add Command"
-      },
-      {
-        "command": "scriptnotes.editCommand",
-        "title": "Edit Command"
-      },
-      {
-        "command": "scriptnotes.deleteCommand",
-        "title": "Delete Command"
-      },
-      {
-        "command": "scriptnotes.runCommand",
-        "title": "Run Command"
-      }
-    ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "scriptnotes",
-          "title": "Command Runner",
+          "title": "Script Notes",
           "icon": "$(terminal)"
         }
       ]
@@ -48,9 +26,10 @@
     "views": {
       "scriptnotes": [
         {
+          "icon": "$(terminal)",
           "type": "webview",
           "id": "commandRunnerWebview",
-          "name": "Command Runner"
+          "name": "Script Notes"
         }
       ]
     }

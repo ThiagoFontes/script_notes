@@ -33,7 +33,7 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 			localResourceRoots: [this._extensionUri]
 		};
 
-		webviewView.title = "Command Runner";
+		webviewView.title = "Script Notes";
 		webviewView.description = "Manage and run shell commands";
 
 		webviewView.webview.html = this._getHtmlForWebview();
@@ -91,54 +91,106 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-                <title>Command Runner</title>
+                <title>Script Notes</title>
                 <style>
-                    body { font-family: var(--vscode-font-family); margin: 0; padding: 1em; }
-                    .command-list { margin-top: 1em; }
+                    body { 
+                        font-family: var(--vscode-font-family);
+                        margin: 0;
+                        padding: 0.5em;
+                        color: var(--vscode-foreground);
+                    }
+                    .header {
+                        display: flex;
+                        justify-content: flex-end;
+                        margin-bottom: 0.5em;
+                    }
+                    .command-list { margin-top: 0.5em; }
                     .command-item { 
                         display: flex; 
-                        align-items: center; 
-                        margin-bottom: 0.5em; 
-                        padding: 0.5em; 
-                        border-radius: 4px;
-                        background-color: var(--vscode-editor-background);
+                        flex-direction: column;
+                        padding: 0.5em;
+                        border-radius: 3px;
+                        transition: all 0.1s ease;
+                        margin: 4px 0;
                         border: 1px solid var(--vscode-widget-border);
+                        background-color: var(--vscode-editor-background);
                     }
                     .command-item:hover { 
                         background-color: var(--vscode-list-hoverBackground);
                         border-color: var(--vscode-focusBorder);
                     }
                     .command-label { 
-                        flex: 1;
-                        color: var(--vscode-foreground);
+                        font-weight: 500;
+                        padding-bottom: 0.3em;
+                        color: var(--vscode-editor-foreground);
+                    }
+                    .actions {
+                        display: flex;
+                        gap: 4px;
+                        border-top: 1px solid var(--vscode-widget-border);
+                        margin-top: 0.3em;
+                        padding-top: 0.3em;
                     }
                     .icon-btn { 
                         background: none; 
                         border: none; 
-                        cursor: pointer; 
-                        margin-left: 0.5em; 
-                        font-size: 1.2em; 
-                        opacity: 0.8;
-                        color: var(--vscode-button-foreground);
-                        padding: 4px;
+                        cursor: pointer;
+                        padding: 4px 8px;
+                        border-radius: 3px;
+                        font-size: 0.9em;
+                        color: var(--vscode-editor-foreground);
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 4px;
+                        flex: 1;
+                        justify-content: center;
+                        min-width: 0;
                     }
                     .icon-btn:hover { 
-                        opacity: 1;
+                        background-color: var(--vscode-button-secondaryHoverBackground);
+                        color: var(--vscode-button-foreground);
+                    }
+                    .icon-btn.add { 
+                        background-color: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                        padding: 6px 12px;
+                    }
+                    .icon-btn.add:hover {
                         background-color: var(--vscode-button-hoverBackground);
                     }
-                    .icon-btn.add { color: var(--vscode-charts-green); }
-                    .icon-btn.edit { color: var(--vscode-charts-blue); }
-                    .icon-btn.delete { color: var(--vscode-charts-red); }
-                    .icon-btn.run { color: var(--vscode-terminal-ansiGreen); }
+                    .icon-btn.edit { background-color: var(--vscode-button-secondaryBackground); }
+                    .icon-btn.run { background-color: var(--vscode-button-secondaryBackground); }
+                    .icon-btn.delete { background-color: var(--vscode-button-secondaryBackground); }
+                    .icon-btn.edit:hover { 
+                        background-color: var(--vscode-symbolIcon-functionForeground);
+                        color: var(--vscode-button-foreground);
+                    }
+                    .icon-btn.run:hover { 
+                        background-color: var(--vscode-testing-iconPassed); 
+                        color: var(--vscode-button-foreground);
+                    }
+                    .icon-btn.delete:hover { 
+                        background-color: var(--vscode-errorForeground); 
+                        color: var(--vscode-button-foreground);
+                    }
                     .empty-message {
                         color: var(--vscode-descriptionForeground);
                         font-style: italic;
+                        padding: 0.5em;
                         margin: 1em 0;
+                        text-align: center;
+                        border: 1px dashed var(--vscode-widget-border);
+                        border-radius: 3px;
                     }
                 </style>
             </head>
             <body>
-                <button class="icon-btn add" title="Add Command" onclick="addCommand()">➕ Add Command</button>
+                <div class="header">
+                    <button class="icon-btn add" title="Add Command" onclick="addCommand()">
+                        <span>+</span>
+                        <span>New Command</span>
+                    </button>
+                </div>
                 <div class="command-list" id="commandList"></div>
                 <script>
                     const vscode = acquireVsCodeApi();
@@ -177,9 +229,11 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                                 div.className = 'command-item';
                                 div.innerHTML = \`
                                     <span class="command-label">\${cmd.label}</span>
-                                    <button class="icon-btn edit" title="Edit" onclick="editCommand('\${cmd.id}')">✏️</button>
-                                    <button class="icon-btn delete" title="Delete" onclick="deleteCommand('\${cmd.id}')">🗑️</button>
-                                    <button class="icon-btn run" title="Run" onclick="runCommand('\${cmd.id}')">▶️</button>
+                                    <div class="actions">
+                                        <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">⚙ Edit</button>
+                                        <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶ Run</button>
+                                        <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">× Delete</button>
+                                    </div>
                                 \`;
                                 container.appendChild(div);
                             }
