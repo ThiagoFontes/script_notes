@@ -323,14 +323,14 @@ export function generateCommandRunnerHtml(): string {
             div.setAttribute('data-id', cmd.id);
             div.innerHTML = \`
                 <div class="command-content">
+                    <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
                     <span class="command-label">\${cmd.label}</span>
                     <div class="actions">
-                        <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">⚙ Edit</button>
-                        <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶ Run</button>
-                        <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">× Delete</button>
+                        <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">⚙</button>
+                        <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶</button>
+                        <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">×</button>
                     </div>
                 </div>
-                <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
             \`;
 
             // Add drag and drop event listeners
