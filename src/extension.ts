@@ -7,6 +7,7 @@ export interface CommandItem {
 	shell: string;
 	flags: string[];
 	argumentPrompts: string[];
+	alwaysPrompt: boolean;
 }
 
 // In-memory store for commands (replace with persistent storage later)
@@ -70,7 +71,10 @@ class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
 					break;
 				case 'runCommand':
 					if (message.id) {
+						console.log('Running command with id:', message.id);
+						console.log('Current command list:', commandList);
 						const cmd = commandList.find(c => c.id === message.id);
+						console.log('Found command:', cmd);
 						if (cmd) {
 							vscode.commands.executeCommand('scriptnotes.runCommand', cmd);
 						}
@@ -232,8 +236,22 @@ export function activate(context: vscode.ExtensionContext): void {
 			});
 			const argumentPrompts = argsRaw ? argsRaw.split(',').map(a => a.trim()).filter(a => a) : [];
 
+			const alwaysPromptResult = await vscode.window.showQuickPick(
+				[{ label: 'Yes' }, { label: 'No' }],
+				{
+					placeHolder: 'Always prompt for arguments when running this command?'
+				}
+			);
+
+			// Log the result to help debug
+			console.log('QuickPick result:', alwaysPromptResult);
+			const alwaysPrompt = alwaysPromptResult?.label === 'Yes';
+			console.log('alwaysPrompt value:', alwaysPrompt);
+
 			const id = Date.now().toString();
-			commandList.push({ id, label, shell, flags, argumentPrompts });
+			const newCommand = { id, label, shell, flags, argumentPrompts, alwaysPrompt };
+			console.log('New command:', newCommand);
+			commandList.push(newCommand);
 			commandProvider.updateWebview();
 		}),
 		vscode.commands.registerCommand('scriptnotes.editCommand', async (item: CommandItem) => {
@@ -261,12 +279,21 @@ export function activate(context: vscode.ExtensionContext): void {
 			});
 			const argumentPrompts = argsRaw ? argsRaw.split(',').map(a => a.trim()).filter(a => a) : [];
 
+			const alwaysPromptResult = await vscode.window.showQuickPick(
+				[{ label: 'Yes' }, { label: 'No' }],
+				{
+					placeHolder: 'Always prompt for arguments when running this command?'
+				}
+			);
+			const alwaysPrompt = alwaysPromptResult?.label === 'Yes';
+
 			const cmd = commandList.find(c => c.id === item.id);
 			if (cmd) {
 				cmd.label = label;
 				cmd.shell = shell;
 				cmd.flags = flags;
 				cmd.argumentPrompts = argumentPrompts;
+				cmd.alwaysPrompt = alwaysPrompt;
 				commandProvider.updateWebview();
 			}
 		}),
@@ -275,13 +302,43 @@ export function activate(context: vscode.ExtensionContext): void {
 			commandProvider.updateWebview();
 		}),
 		vscode.commands.registerCommand('scriptnotes.runCommand', async (item: CommandItem) => {
+			console.log('Running command:', item);
 			let args: string[] = [];
-			for (const prompt of item.argumentPrompts) {
-				const value = await vscode.window.showInputBox({ prompt });
-				if (value === undefined) { return; }
-				args.push(value);
+
+			// Show what we're working with
+			console.log('Has argument prompts:', item.argumentPrompts.length > 0);
+			console.log('Always prompt setting:', item.alwaysPrompt);
+
+			// If we have prompts defined or alwaysPrompt is true, show input boxes
+			if (item.argumentPrompts.length > 0 || item.alwaysPrompt) {
+				// If no prompts are defined but alwaysPrompt is true, create a default prompt
+				const promptsToShow = item.argumentPrompts.length > 0 ?
+					item.argumentPrompts :
+					['Enter argument'];
+
+				for (const prompt of promptsToShow) {
+					console.log('Showing input box for prompt:', prompt);
+					const value = await vscode.window.showInputBox({
+						prompt,
+						ignoreFocusOut: true,
+						title: `${item.label} - Argument Input`,
+						placeHolder: 'Enter value'
+					});
+
+					// If user cancels, abort the command
+					if (value === undefined) {
+						console.log('User cancelled input');
+						return;
+					}
+
+					console.log('Got argument value:', value);
+					args.push(value);
+				}
 			}
+
+			console.log('Final arguments:', args);
 			const fullCommand = [item.shell, ...item.flags, ...args].join(' ');
+			console.log('Running full command:', fullCommand);
 			const task = new vscode.Task(
 				{ type: 'shell' },
 				vscode.TaskScope.Workspace,
