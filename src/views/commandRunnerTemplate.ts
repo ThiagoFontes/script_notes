@@ -441,11 +441,6 @@ export function generateCommandRunnerHtml(): string {
                         // Insert at the calculated position
                         state.folderList.splice(targetInsertIndex, 0, removed);
                         
-                        // Update order property for persistence
-                        state.folderList.forEach((folder, index) => {
-                            folder.order = index;
-                        });
-                        
                         // Send message to update folder order
                         vscode.postMessage({ 
                             command: 'reorderFolders', 
@@ -509,11 +504,6 @@ export function generateCommandRunnerHtml(): string {
                             // Only one folder (the dragged one) - just put it back
                             state.folderList.push(removed);
                         }
-                        
-                        // Update order property
-                        state.folderList.forEach((folder, index) => {
-                            folder.order = index;
-                        });
                         
                         // Send message to update folder order
                         vscode.postMessage({ 

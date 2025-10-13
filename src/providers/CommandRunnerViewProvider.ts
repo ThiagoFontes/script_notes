@@ -192,8 +192,7 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     break;
                 case 'reorderCommands':
                     if (message.commandList) {
-                        commandList = message.commandList;
-                        await this.updateWebview();
+                        vscode.commands.executeCommand('scriptnotes.reorderCommands', message.commandList);
                     }
                     break;
                 case 'addFolder':
@@ -221,8 +220,7 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                     break;
                 case 'reorderFolders':
                     if (message.folderList) {
-                        setFolderList(message.folderList);
-                        await this.saveFolders();
+                        vscode.commands.executeCommand('scriptnotes.reorderFolders', message.folderList);
                     }
                     break;
                 case 'moveCommandToFolder':
