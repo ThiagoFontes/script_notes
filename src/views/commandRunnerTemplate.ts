@@ -264,9 +264,9 @@ export function generateCommandRunnerHtml(): string {
             
             hideDropIndicator(); // Clear previous indicator
             
-            // Check if dragging a folder
+            // Check if dragging a folder (draggedItem is now the folder header)
             const draggedFolderId = draggedItem?.getAttribute('data-folder-id');
-            if (draggedFolderId && draggedItem.classList.contains('folder-item')) {
+            if (draggedFolderId && draggedItem.classList.contains('folder-header')) {
                 const folderTarget = e.target.closest('.folder-item');
                 const containerTarget = e.target.closest('#commandList');
                 
