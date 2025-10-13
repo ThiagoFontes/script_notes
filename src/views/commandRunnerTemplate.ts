@@ -676,22 +676,70 @@ export function generateCommandRunnerHtml(): string {
                 const folderCommands = commands.filter(cmd => cmd.folderId === folder.id);
                 const isExpanded = folder.expanded;
                 
-                folderDiv.innerHTML = \`
-                    <div class="folder-header" onclick="handleFolderClick(event, '\${folder.id}')">
-                        <span class="folder-icon">\${isExpanded ? '📂' : '📁'}</span>
-                        <span class="folder-name">\${folder.name}</span>
-                        <div class="folder-actions" onclick="event.stopPropagation()">
-                            <button class="icon-btn run" onclick="event.stopPropagation(); runFolder('\${folder.id}')" title="Run all commands in folder">▶︎</button>
-                            <button class="icon-btn edit" onclick="event.stopPropagation(); renameFolder('\${folder.id}')" title="Rename">✎</button>
-                            <button class="icon-btn delete" onclick="event.stopPropagation(); deleteFolder('\${folder.id}')" title="Delete">✖</button>
-                        </div>
-                    </div>
-                    <div class="folder-content \${isExpanded ? '' : 'collapsed'}" id="folder-\${folder.id}">
-                        \${folderCommands.length === 0 ? 
-                            '<div class="folder-empty">Drop commands here to organize them</div>' : 
-                            ''}
-                    </div>
-                \`;
+                // Create folder header
+                const folderHeader = document.createElement('div');
+                folderHeader.className = 'folder-header';
+                folderHeader.onclick = function(event) { handleFolderClick(event, folder.id); };
+                
+                // Create folder icon
+                const folderIcon = document.createElement('span');
+                folderIcon.className = 'folder-icon';
+                folderIcon.textContent = isExpanded ? '📂' : '📁';
+                
+                // Create folder name
+                const folderName = document.createElement('span');
+                folderName.className = 'folder-name';
+                folderName.textContent = folder.name;
+                
+                // Create folder actions
+                const folderActions = document.createElement('div');
+                folderActions.className = 'folder-actions';
+                folderActions.onclick = function(e) { e.stopPropagation(); };
+                
+                // Create action buttons
+                const runBtn = document.createElement('button');
+                runBtn.className = 'icon-btn run';
+                runBtn.title = 'Run all commands in folder';
+                runBtn.textContent = '▶︎';
+                runBtn.onclick = function(e) { e.stopPropagation(); runFolder(folder.id); };
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'icon-btn edit';
+                editBtn.title = 'Rename';
+                editBtn.textContent = '✎';
+                editBtn.onclick = function(e) { e.stopPropagation(); renameFolder(folder.id); };
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'icon-btn delete';
+                deleteBtn.title = 'Delete';
+                deleteBtn.textContent = '✖';
+                deleteBtn.onclick = function(e) { e.stopPropagation(); deleteFolder(folder.id); };
+                
+                // Assemble actions
+                folderActions.appendChild(runBtn);
+                folderActions.appendChild(editBtn);
+                folderActions.appendChild(deleteBtn);
+                
+                // Assemble header
+                folderHeader.appendChild(folderIcon);
+                folderHeader.appendChild(folderName);
+                folderHeader.appendChild(folderActions);
+                
+                // Create folder content
+                const folderContentDiv = document.createElement('div');
+                folderContentDiv.className = 'folder-content ' + (isExpanded ? '' : 'collapsed');
+                folderContentDiv.id = 'folder-' + folder.id;
+                
+                if (folderCommands.length === 0) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'folder-empty';
+                    emptyDiv.textContent = 'Drop commands here to organize them';
+                    folderContentDiv.appendChild(emptyDiv);
+                }
+                
+                // Assemble folder
+                folderDiv.appendChild(folderHeader);
+                folderDiv.appendChild(folderContentDiv);
                 
                 // Add drag and drop listeners to folder
                 folderDiv.addEventListener('dragstart', handleFolderDragStart);
@@ -703,11 +751,10 @@ export function generateCommandRunnerHtml(): string {
                 container.appendChild(folderDiv);
                 
                 // Add commands to this folder
-                const folderContent = folderDiv.querySelector('.folder-content');
                 if (folderCommands.length > 0) {
                     folderCommands.forEach(cmd => {
                         const cmdElement = createCommandElement(cmd);
-                        folderContent.appendChild(cmdElement);
+                        folderContentDiv.appendChild(cmdElement);
                     });
                 }
             });
@@ -733,17 +780,57 @@ export function generateCommandRunnerHtml(): string {
             div.className = 'command-item';
             div.draggable = true;
             div.setAttribute('data-id', cmd.id);
-            div.innerHTML = \`
-                <div class="command-content">
-                    <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-                    <span class="command-label">\${cmd.label}</span>
-                    <div class="actions">
-                        <button class="icon-btn edit" title="Edit command" onclick="editCommand('\${cmd.id}')">✎</button>
-                        <button class="icon-btn run" title="Run command" onclick="runCommand('\${cmd.id}')">▶︎</button>
-                        <button class="icon-btn delete" title="Delete command" onclick="deleteCommand('\${cmd.id}')">✖</button>
-                    </div>
-                </div>
-            \`;
+            
+            // Create command content container
+            const content = document.createElement('div');
+            content.className = 'command-content';
+            
+            // Create drag handle
+            const dragHandle = document.createElement('div');
+            dragHandle.className = 'drag-handle';
+            dragHandle.title = 'Drag to reorder';
+            dragHandle.textContent = '⋮⋮';
+            
+            // Create command label
+            const label = document.createElement('span');
+            label.className = 'command-label';
+            label.textContent = cmd.label;
+            
+            // Create actions container
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+            
+            // Create action buttons
+            const editBtn = document.createElement('button');
+            editBtn.className = 'icon-btn edit';
+            editBtn.title = 'Edit command';
+            editBtn.textContent = '✎';
+            editBtn.onclick = function() { editCommand(cmd.id); };
+            
+            const runBtn = document.createElement('button');
+            runBtn.className = 'icon-btn run';
+            runBtn.title = 'Run command';
+            runBtn.textContent = '▶︎';
+            runBtn.onclick = function() { runCommand(cmd.id); };
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'icon-btn delete';
+            deleteBtn.title = 'Delete command';
+            deleteBtn.textContent = '✖';
+            deleteBtn.onclick = function() { deleteCommand(cmd.id); };
+            
+            // Assemble actions
+            actions.appendChild(editBtn);
+            actions.appendChild(runBtn);
+            actions.appendChild(deleteBtn);
+            
+            // Assemble content
+            content.appendChild(dragHandle);
+            content.appendChild(label);
+            content.appendChild(actions);
+            
+            // Assemble div
+            div.appendChild(content);
 
             // Add drag and drop event listeners
             div.addEventListener('dragstart', handleDragStart);
