@@ -84,6 +84,9 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
             folderList = savedFolders;
         }
 
+        // Ensure backwards compatibility for commandIds arrays
+        commandStorage.ensureFolderCommandIds();
+
         // Debug logging
         console.log('Loaded folders count:', folderList.length);
         console.log('Loaded folders:', folderList.map(f => ({ id: f.id, name: f.name })));
@@ -221,6 +224,11 @@ export class CommandRunnerViewProvider implements vscode.WebviewViewProvider {
                 case 'reorderFolders':
                     if (message.folderList) {
                         vscode.commands.executeCommand('scriptnotes.reorderFolders', message.folderList);
+                    }
+                    break;
+                case 'reorderFolderCommands':
+                    if (message.folderId && message.commandIds) {
+                        vscode.commands.executeCommand('scriptnotes.reorderFolderCommands', message.folderId, message.commandIds);
                     }
                     break;
                 case 'moveCommandToFolder':

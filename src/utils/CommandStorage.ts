@@ -60,7 +60,8 @@ export class CommandStorage {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             name: name,
             expanded: true,
-            order: existingFolders.length
+            order: existingFolders.length,
+            commandIds: [] // Initialize empty command IDs array
         };
 
         const updatedFolders = [...existingFolders, newFolder];
@@ -110,10 +111,77 @@ export class CommandStorage {
      */
     async moveCommandToFolder(commandId: string, folderId: string | undefined): Promise<void> {
         const commands = this.loadCommands();
+        const folders = this.loadFolders();
         const commandIndex = commands.findIndex(cmd => cmd.id === commandId);
+
         if (commandIndex !== -1) {
-            commands[commandIndex].folderId = folderId;
+            const command = commands[commandIndex];
+            const oldFolderId = command.folderId;
+
+            // Remove from old folder's commandIds array
+            if (oldFolderId) {
+                const oldFolder = folders.find(f => f.id === oldFolderId);
+                if (oldFolder && oldFolder.commandIds) {
+                    oldFolder.commandIds = oldFolder.commandIds.filter(id => id !== commandId);
+                }
+            }
+
+            // Update command's folderId
+            command.folderId = folderId;
+
+            // Add to new folder's commandIds array
+            if (folderId) {
+                const newFolder = folders.find(f => f.id === folderId);
+                if (newFolder) {
+                    // Initialize commandIds array if it doesn't exist (backwards compatibility)
+                    if (!newFolder.commandIds) {
+                        newFolder.commandIds = [];
+                    }
+                    // Add to the end of the array
+                    if (!newFolder.commandIds.includes(commandId)) {
+                        newFolder.commandIds.push(commandId);
+                    }
+                }
+            }
+
             await this.saveCommands(commands);
+            await this.saveFolders(folders);
+        }
+    }
+
+    /**
+     * Update the command order within a folder
+     */
+    async updateFolderCommandOrder(folderId: string, commandIds: string[]): Promise<void> {
+        const folders = this.loadFolders();
+        const folder = folders.find(f => f.id === folderId);
+
+        if (folder) {
+            folder.commandIds = commandIds;
+            await this.saveFolders(folders);
+        }
+    }
+
+    /**
+     * Ensure backwards compatibility by initializing commandIds arrays for existing folders
+     */
+    ensureFolderCommandIds(): void {
+        const folders = this.loadFolders();
+        const commands = this.loadCommands();
+        let hasChanges = false;
+
+        folders.forEach(folder => {
+            if (!folder.commandIds) {
+                // Initialize with commands currently in this folder
+                folder.commandIds = commands
+                    .filter(cmd => cmd.folderId === folder.id)
+                    .map(cmd => cmd.id);
+                hasChanges = true;
+            }
+        });
+
+        if (hasChanges) {
+            this.saveFolders(folders); // Note: using sync save for initialization
         }
     }
 }

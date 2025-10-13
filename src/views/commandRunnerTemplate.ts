@@ -669,6 +669,8 @@ export function generateCommandRunnerHtml(): string {
                 // Create folder header
                 const folderHeader = document.createElement('div');
                 folderHeader.className = 'folder-header';
+                folderHeader.draggable = true;
+                folderHeader.setAttribute('data-folder-id', folder.id);
                 folderHeader.onclick = function(event) { handleFolderClick(event, folder.id); };
                 
                 // Create folder icon
@@ -732,7 +734,7 @@ export function generateCommandRunnerHtml(): string {
                 folderDiv.appendChild(folderContentDiv);
                 
                 // Add drag and drop listeners to folder
-                folderDiv.addEventListener('dragstart', handleFolderDragStart);
+                folderHeader.addEventListener('dragstart', handleFolderDragStart);
                 folderDiv.addEventListener('dragover', handleDragOver);
                 folderDiv.addEventListener('dragenter', handleDragEnter);
                 folderDiv.addEventListener('dragleave', handleDragLeave);
@@ -810,8 +812,8 @@ export function generateCommandRunnerHtml(): string {
             deleteBtn.onclick = function() { deleteCommand(cmd.id); };
             
             // Assemble actions
-            actions.appendChild(editBtn);
             actions.appendChild(runBtn);
+            actions.appendChild(editBtn);
             actions.appendChild(deleteBtn);
             
             // Assemble content

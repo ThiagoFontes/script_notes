@@ -86,4 +86,27 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(folder.expanded, false);
 		assert.strictEqual(folder.order, 1);
 	});
+
+	test('Folder can have commandIds array for ordering', () => {
+		const folderWithCommands: Folder = {
+			id: 'folder-3',
+			name: 'Build Scripts',
+			expanded: true,
+			order: 0,
+			commandIds: ['cmd-1', 'cmd-2', 'cmd-3']
+		};
+
+		assert.strictEqual(folderWithCommands.commandIds?.length, 3);
+		assert.deepStrictEqual(folderWithCommands.commandIds, ['cmd-1', 'cmd-2', 'cmd-3']);
+
+		// Test backwards compatibility - commandIds should be optional
+		const folderWithoutCommands: Folder = {
+			id: 'folder-4',
+			name: 'Legacy Folder',
+			expanded: true,
+			order: 1
+		};
+
+		assert.strictEqual(folderWithoutCommands.commandIds, undefined);
+	});
 });

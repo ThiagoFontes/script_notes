@@ -10,9 +10,37 @@ export async function reorderCommandsCommand(commandList: CommandItem[]): Promis
         // Update the in-memory command list
         setCommandList(commandList);
 
-        // Save to storage
+        // Update folder commandIds arrays based on the new order
         const storage = getCommandStorage();
+        const folders = storage.loadFolders();
+
+        // Group commands by folder and update the commandIds arrays
+        const folderCommandMap = new Map<string, string[]>();
+
+        commandList.forEach(command => {
+            if (command.folderId) {
+                if (!folderCommandMap.has(command.folderId)) {
+                    folderCommandMap.set(command.folderId, []);
+                }
+                folderCommandMap.get(command.folderId)!.push(command.id);
+            }
+        });
+
+        // Update each folder's commandIds array
+        folders.forEach(folder => {
+            if (folderCommandMap.has(folder.id)) {
+                folder.commandIds = folderCommandMap.get(folder.id)!;
+            } else {
+                // Initialize empty array if no commands in folder
+                if (!folder.commandIds) {
+                    folder.commandIds = [];
+                }
+            }
+        });
+
+        // Save to storage
         await storage.saveCommands(commandList);
+        await storage.saveFolders(folders);
 
         // Refresh the view
         vscode.commands.executeCommand('scriptnotes.refresh');
@@ -43,6 +71,21 @@ export async function reorderFoldersCommand(folderList: Folder[]): Promise<void>
         vscode.commands.executeCommand('scriptnotes.refresh');
     } catch (error) {
         vscode.window.showErrorMessage('Failed to reorder folders: ' + (error instanceof Error ? error.message : String(error)));
+    }
+}
+
+/**
+ * Command to reorder commands within a specific folder
+ */
+export async function reorderFolderCommandsCommand(folderId: string, commandIds: string[]): Promise<void> {
+    try {
+        const storage = getCommandStorage();
+        await storage.updateFolderCommandOrder(folderId, commandIds);
+
+        // Refresh the view
+        vscode.commands.executeCommand('scriptnotes.refresh');
+    } catch (error) {
+        vscode.window.showErrorMessage('Failed to reorder folder commands: ' + (error instanceof Error ? error.message : String(error)));
     }
 }
 

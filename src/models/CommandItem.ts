@@ -19,6 +19,7 @@ export interface Folder {
     name: string;
     expanded: boolean; // UI state for expand/collapse
     order: number; // For custom ordering
+    commandIds?: string[]; // Array of command IDs in this folder, defines ordering
 }
 
 /**
