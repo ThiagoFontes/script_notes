@@ -22,11 +22,11 @@ export function generateCommandRunnerHtml(): string {
         </button>
     </div>
     <div class="actions-bar">
-        <button class="icon-btn" title="Import Commands" onclick="importCommands()">
+        <button class="icon-btn import-btn" title="Import Commands" onclick="importCommands()">
             <span>↓</span>
             <span>Import</span>
         </button>
-        <button class="icon-btn" title="Export Commands" onclick="exportCommands()">
+        <button class="icon-btn export-btn" title="Export Commands" onclick="exportCommands()">
             <span>↑</span>
             <span>Export</span>
         </button>

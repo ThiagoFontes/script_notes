@@ -13,14 +13,31 @@ body {
 
 .header .icon-btn {
     flex: 1;
+    width: auto !important;
+    height: auto !important;
 }
 
 .actions-bar {
     display: flex;
-    gap: 4px;
+    justify-content: stretch;
     margin-bottom: 0.5em;
     padding: 0.25em 0;
     border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+.actions-bar .icon-btn.import-btn,
+.actions-bar .icon-btn.export-btn {
+    flex: 1;
+    width: auto !important;
+    height: auto !important;
+    padding: 6px 12px;
+    /* background-color: var(--vscode-button-secondaryBackground); */
+    color: var(--vscode-button-secondaryForeground);
+}
+
+.actions-bar .icon-btn.import-btn:hover,
+.actions-bar .icon-btn.export-btn:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
 }
 
 .export-view {
