@@ -115,6 +115,25 @@ export async function runCommand(item: CommandItem): Promise<void> {
             console.log('Adding selected argument:', selectedItem.label);
             args.push(selectedItem.label);
         }
+
+        // Save any new custom arguments to the command for persistence
+        if (customArgs.length > 0) {
+            const newArguments = customArgs.filter(arg => !item.argumentPrompts.includes(arg));
+            if (newArguments.length > 0) {
+                console.log('Saving new arguments to command:', newArguments);
+                item.argumentPrompts.push(...newArguments);
+                
+                // Update the command in storage
+                const { getCommandList, setCommandList } = require('../providers/CommandRunnerViewProvider');
+                const commandList = getCommandList();
+                const index = commandList.findIndex((cmd: CommandItem) => cmd.id === item.id);
+                if (index !== -1) {
+                    commandList[index] = item;
+                    setCommandList(commandList);
+                    console.log('Command updated with new arguments');
+                }
+            }
+        }
     }
 
     console.log('Final arguments:', args);
