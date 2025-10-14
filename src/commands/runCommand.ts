@@ -9,30 +9,111 @@ export async function runCommand(item: CommandItem): Promise<void> {
     console.log('Has argument prompts:', item.argumentPrompts.length > 0);
     console.log('Always prompt setting:', item.alwaysPrompt);
 
-    // If we have prompts defined or alwaysPrompt is true, show input boxes
+    // If we have prompts defined or alwaysPrompt is true, show argument selection
     if (item.argumentPrompts.length > 0 || item.alwaysPrompt) {
         // If no prompts are defined but alwaysPrompt is true, create a default prompt
         const promptsToShow = item.argumentPrompts.length > 0 ?
             item.argumentPrompts :
             ['Enter argument'];
 
-        for (const prompt of promptsToShow) {
-            console.log('Showing input box for prompt:', prompt);
-            const value = await vscode.window.showInputBox({
-                prompt,
-                ignoreFocusOut: true,
-                title: `${item.label} - Argument Input`,
-                placeHolder: 'Enter value'
+        // Create QuickPick for argument selection
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.title = `${item.label} - Select Arguments`;
+        quickPick.placeholder = 'Select arguments or type custom ones (press Enter to add)';
+        quickPick.canSelectMany = true;
+        quickPick.ignoreFocusOut = true;
+
+        // Allow custom input by enabling matchOnDescription and handling onDidChangeValue
+        quickPick.matchOnDescription = false;
+        quickPick.matchOnDetail = false;
+
+        // Create items from argument prompts
+        let availableItems = promptsToShow.map(prompt => ({
+            label: prompt,
+            description: 'Predefined argument'
+        }));
+
+        quickPick.items = availableItems;
+        let customArgs: string[] = [];
+
+        // Handle custom input
+        quickPick.onDidChangeValue((value) => {
+            if (value && !availableItems.some(item => item.label === value) && !customArgs.includes(value)) {
+                // Show the current input as a potential new item
+                quickPick.items = [
+                    ...availableItems,
+                    ...customArgs.map(arg => ({ label: arg, description: 'Custom argument' })),
+                    { label: value, description: 'Press Enter to add this custom argument', alwaysShow: true }
+                ];
+            } else {
+                // Show existing items
+                quickPick.items = [
+                    ...availableItems,
+                    ...customArgs.map(arg => ({ label: arg, description: 'Custom argument' }))
+                ];
+            }
+        });
+
+        // Show the QuickPick
+        quickPick.show();
+
+        const selectedItems = await new Promise<readonly vscode.QuickPickItem[] | undefined>((resolve) => {
+            let isFinalized = false;
+            
+            // Use button to finalize selection
+            quickPick.buttons = [{
+                iconPath: new vscode.ThemeIcon('check'),
+                tooltip: 'Confirm selection and run command'
+            }];
+
+            quickPick.onDidTriggerButton(() => {
+                if (!isFinalized) {
+                    isFinalized = true;
+                    resolve(quickPick.selectedItems);
+                    quickPick.dispose();
+                }
             });
 
-            // If user cancels, abort the command
-            if (value === undefined) {
-                console.log('User cancelled input');
-                return;
-            }
+            // Handle Enter key - add custom argument if typing, otherwise finalize
+            quickPick.onDidAccept(() => {
+                const value = quickPick.value.trim();
+                if (value && !availableItems.some(item => item.label === value) && !customArgs.includes(value)) {
+                    // Add custom argument
+                    console.log('Adding custom argument:', value);
+                    customArgs.push(value);
+                    quickPick.value = ''; // Clear input
+                    quickPick.items = [
+                        ...availableItems,
+                        ...customArgs.map(arg => ({ label: arg, description: 'Custom argument' }))
+                    ];
+                } else if (!value) {
+                    // No text in input, finalize selection
+                    if (!isFinalized) {
+                        isFinalized = true;
+                        resolve(quickPick.selectedItems);
+                        quickPick.dispose();
+                    }
+                }
+            });
+            
+            quickPick.onDidHide(() => {
+                if (!isFinalized) {
+                    resolve(undefined);
+                    quickPick.dispose();
+                }
+            });
+        });
 
-            console.log('Got argument value:', value);
-            args.push(value);
+        // If user cancels, abort the command
+        if (!selectedItems) {
+            console.log('User cancelled argument selection');
+            return;
+        }
+
+        // Add selected arguments directly to the command
+        for (const selectedItem of selectedItems) {
+            console.log('Adding selected argument:', selectedItem.label);
+            args.push(selectedItem.label);
         }
     }
 
