@@ -122,7 +122,7 @@ export async function runCommand(item: CommandItem): Promise<void> {
             if (newArguments.length > 0) {
                 console.log('Saving new arguments to command:', newArguments);
                 item.argumentPrompts.push(...newArguments);
-                
+
                 // Update the command in storage
                 const { getCommandList, setCommandList } = require('../providers/CommandRunnerViewProvider');
                 const commandList = getCommandList();
