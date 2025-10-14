@@ -268,10 +268,21 @@ export function generateCommandEditorHtml(command: CommandItem): string {
         function save() {
             const unconfirmed = checkUnconfirmedInputs();
             if (unconfirmed.length > 0) {
-                showError(\`You have unconfirmed inputs: \${unconfirmed.join(', ')}. Please press Enter below each field to confirm them, or leave without saving.\`);
+                showError(\`You have unconfirmed inputs: \${unconfirmed.join(', ')}. Please press Enter below each field to confirm them, or <button onclick="forceSave()" style="background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 2px 6px; margin: 0 4px; cursor: pointer; border-radius: 2px;">Save Without These Fields</button>\`);
                 return;
             }
 
+            performSave();
+        }
+
+        function forceSave() {
+            // Clear unconfirmed inputs and save
+            document.getElementById('newFlag').value = '';
+            document.getElementById('newPrompt').value = '';
+            performSave();
+        }
+
+        function performSave() {
             const command = {
                 label: document.getElementById('label').value.trim(),
                 shell: document.getElementById('shell').value.trim(),
