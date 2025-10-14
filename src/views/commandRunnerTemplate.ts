@@ -144,42 +144,69 @@ export function generateCommandRunnerHtml(): string {
             });
         }
         function deleteFolder(folderId) {
+            console.log('[DELETE] deleteFolder called with folderId:', folderId);
+            
             const folderElement = document.querySelector('[data-folder-id="' + folderId + '"]');
-            if (!folderElement) return;
+            if (!folderElement) {
+                console.log('[DELETE] Folder element not found for folderId:', folderId);
+                return;
+            }
+            console.log('[DELETE] Found folder element:', folderElement);
             
-            const deleteButton = folderElement.querySelector('button[onclick*="deleteFolder"]');
-            if (!deleteButton) return;
+            const deleteButton = folderElement.querySelector('button.delete');
+            if (!deleteButton) {
+                console.log('[DELETE] Delete button not found in folder element');
+                return;
+            }
+            console.log('[DELETE] Found delete button:', deleteButton);
             
-            // Change button to show confirmation
+            // Check if already in confirmation state
+            if (deleteButton.classList.contains('confirming')) {
+                console.log('[DELETE] Second click - confirming deletion');
+                vscode.postMessage({ command: 'deleteFolder', folderId });
+                
+                // Reset button
+                deleteButton.innerHTML = deleteButton.dataset.originalText || '✖';
+                deleteButton.title = deleteButton.dataset.originalTitle || 'Excluir pasta';
+                deleteButton.style.color = '';
+                deleteButton.classList.remove('confirming');
+                
+                // Clear any existing timeout
+                if (deleteButton.dataset.resetTimeout) {
+                    clearTimeout(parseInt(deleteButton.dataset.resetTimeout));
+                    delete deleteButton.dataset.resetTimeout;
+                }
+                return;
+            }
+            
+            console.log('[DELETE] First click - showing confirmation state');
+            
+            // Store original values
             const originalText = deleteButton.innerHTML;
             const originalTitle = deleteButton.title;
+            deleteButton.dataset.originalText = originalText;
+            deleteButton.dataset.originalTitle = originalTitle;
+            
+            // Change button to show confirmation
             deleteButton.innerHTML = '✓';
-            deleteButton.title = 'Click again to confirm deletion';
+            deleteButton.title = 'Clique novamente para confirmar exclusão';
             deleteButton.style.color = 'var(--vscode-errorForeground)';
+            deleteButton.classList.add('confirming');
             
-            // Create new click handler for confirmation
-            const confirmHandler = function(e) {
-                e.stopPropagation();
-                vscode.postMessage({ command: 'deleteFolder', folderId });
-                // Reset button
-                deleteButton.innerHTML = originalText;
-                deleteButton.title = originalTitle;
-                deleteButton.style.color = '';
-                deleteButton.removeEventListener('click', confirmHandler);
-            };
-            
-            // Reset button after 3 seconds if not clicked
+            // Reset button after 3 seconds if not clicked again
             const resetTimeout = setTimeout(() => {
+                console.log('[DELETE] Timeout reached - resetting button');
                 deleteButton.innerHTML = originalText;
                 deleteButton.title = originalTitle;
                 deleteButton.style.color = '';
-                deleteButton.removeEventListener('click', confirmHandler);
+                deleteButton.classList.remove('confirming');
+                delete deleteButton.dataset.resetTimeout;
             }, 3000);
             
-            deleteButton.addEventListener('click', confirmHandler);
+            // Store timeout ID
+            deleteButton.dataset.resetTimeout = resetTimeout.toString();
             
-            // Clear timeout if confirmed quickly
-            deleteButton.addEventListener('click', () => clearTimeout(resetTimeout), { once: true });
+            console.log('[DELETE] Confirmation state set, waiting for second click');
         }
 
         function runFolder(folderId) {
