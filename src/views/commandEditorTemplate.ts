@@ -157,7 +157,7 @@ export function generateCommandEditorHtml(command: CommandItem): string {
                 <input type="text" class="new-tag-input" id="newFlag" 
                     placeholder="Type a flag and press Enter (e.g., -v or --verbose)">
             </div>
-            <div class="description">Command line flags and options</div>
+            <div class="description">Command line flags and options. <strong>Press Enter to confirm each flag.</strong></div>
         </div>
 
         <div class="form-group">
@@ -172,7 +172,7 @@ export function generateCommandEditorHtml(command: CommandItem): string {
                 <input type="text" class="new-tag-input" id="newPrompt" 
                     placeholder="Type a prompt and press Enter">
             </div>
-            <div class="description">Prompts shown when asking for command arguments</div>
+            <div class="description">Prompts shown when asking for command arguments. <strong>Press Enter to confirm each prompt.</strong></div>
         </div>
 
         <div class="checkbox-group">
@@ -254,7 +254,24 @@ export function generateCommandEditorHtml(command: CommandItem): string {
             }
         });
 
+        function checkUnconfirmedInputs() {
+            const newFlag = document.getElementById('newFlag').value.trim();
+            const newPrompt = document.getElementById('newPrompt').value.trim();
+            
+            const unconfirmed = [];
+            if (newFlag) unconfirmed.push(\`Flag: "\${newFlag}"\`);
+            if (newPrompt) unconfirmed.push(\`Argument: "\${newPrompt}"\`);
+            
+            return unconfirmed;
+        }
+
         function save() {
+            const unconfirmed = checkUnconfirmedInputs();
+            if (unconfirmed.length > 0) {
+                showError(\`You have unconfirmed inputs: \${unconfirmed.join(', ')}. Please press Enter below each field to confirm them, or leave without saving.\`);
+                return;
+            }
+
             const command = {
                 label: document.getElementById('label').value.trim(),
                 shell: document.getElementById('shell').value.trim(),
@@ -280,11 +297,21 @@ export function generateCommandEditorHtml(command: CommandItem): string {
 
         function showError(message) {
             const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
+            errorDiv.innerHTML = message;
             errorDiv.style.display = 'block';
         }
 
         function cancel() {
+            const unconfirmed = checkUnconfirmedInputs();
+            if (unconfirmed.length > 0) {
+                showError(\`You have unconfirmed inputs: \${unconfirmed.join(', ')}. Please press Enter below each field to confirm them, or <button onclick="forceCancel()" style="background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 2px 6px; margin: 0 4px; cursor: pointer; border-radius: 2px;">Leave Without Saving</button>\`);
+                return;
+            }
+            
+            vscode.postMessage({ type: 'cancel' });
+        }
+
+        function forceCancel() {
             vscode.postMessage({ type: 'cancel' });
         }
     </script>
