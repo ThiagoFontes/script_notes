@@ -50,7 +50,80 @@ export function generateCommandRunnerHtml(): string {
             vscode.postMessage({ command: 'editCommand', id });
         }
         function deleteCommand(id) {
-            vscode.postMessage({ command: 'deleteCommand', id });
+            console.log('[DELETE] deleteCommand called with id:', id);
+            
+            const commandElement = document.querySelector('[data-id="' + id + '"]');
+            if (!commandElement) {
+                console.log('[DELETE] Command element not found for id:', id);
+                return;
+            }
+            console.log('[DELETE] Found command element:', commandElement);
+            
+            const deleteButton = commandElement.querySelector('button.delete');
+            if (!deleteButton) {
+                console.log('[DELETE] Delete button not found in command element');
+                return;
+            }
+            console.log('[DELETE] Found delete button:', deleteButton);
+            
+            // Check if already in confirmation state
+            if (deleteButton.classList.contains('confirming')) {
+                console.log('[DELETE] Second click - confirming command deletion');
+                
+                // Change to green for visual feedback
+                deleteButton.style.color = 'var(--vscode-gitDecoration-addedResourceForeground)';
+                deleteButton.innerHTML = '✓';
+                deleteButton.title = 'Excluindo...';
+                
+                vscode.postMessage({ command: 'deleteCommand', id });
+                
+                // Reset button after a brief moment
+                setTimeout(() => {
+                    deleteButton.innerHTML = deleteButton.dataset.originalText || '✖';
+                    deleteButton.title = deleteButton.dataset.originalTitle || 'Excluir comando';
+                    deleteButton.style.color = '';
+                    deleteButton.classList.remove('confirming');
+                    deleteButton.classList.remove('confirming-first-click');
+                }, 500);
+                
+                // Clear any existing timeout
+                if (deleteButton.dataset.resetTimeout) {
+                    clearTimeout(parseInt(deleteButton.dataset.resetTimeout));
+                    delete deleteButton.dataset.resetTimeout;
+                }
+                return;
+            }
+            
+            console.log('[DELETE] First click - showing confirmation state');
+            
+            // Store original values
+            const originalText = deleteButton.innerHTML;
+            const originalTitle = deleteButton.title;
+            deleteButton.dataset.originalText = originalText;
+            deleteButton.dataset.originalTitle = originalTitle;
+            
+            // Change button to show confirmation
+            deleteButton.innerHTML = '✓';
+            deleteButton.title = 'Clique novamente para confirmar exclusão';
+            deleteButton.style.color = 'var(--vscode-errorForeground)';
+            deleteButton.classList.add('confirming');
+            deleteButton.classList.add('confirming-first-click');
+            
+            // Reset button after 3 seconds if not clicked again
+            const resetTimeout = setTimeout(() => {
+                console.log('[DELETE] Timeout reached - resetting command button');
+                deleteButton.innerHTML = originalText;
+                deleteButton.title = originalTitle;
+                deleteButton.style.color = '';
+                deleteButton.classList.remove('confirming');
+                deleteButton.classList.remove('confirming-first-click');
+                delete deleteButton.dataset.resetTimeout;
+            }, 3000);
+            
+            // Store timeout ID
+            deleteButton.dataset.resetTimeout = resetTimeout.toString();
+            
+            console.log('[DELETE] Command confirmation state set, waiting for second click');
         }
         function runCommand(id) {
             vscode.postMessage({ command: 'runCommand', id });
@@ -838,7 +911,10 @@ export function generateCommandRunnerHtml(): string {
             deleteBtn.className = 'icon-btn delete';
             deleteBtn.title = 'Delete command';
             deleteBtn.textContent = '✖';
-            deleteBtn.onclick = function() { deleteCommand(cmd.id); };
+            deleteBtn.addEventListener('click', function() { 
+                console.log('[DELETE] Command button clicked, calling deleteCommand with id:', cmd.id);
+                deleteCommand(cmd.id); 
+            });
             
             // Assemble actions
             actions.appendChild(runBtn);
