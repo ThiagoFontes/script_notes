@@ -195,6 +195,7 @@ export function generateCommandEditorHtml(command: CommandItem): string {
         const vscode = acquireVsCodeApi();
         let currentFlags = ${JSON.stringify(command.flags)};
         let currentPrompts = ${JSON.stringify(command.argumentPrompts)};
+        const originalCommand = ${JSON.stringify(command)};
 
         function removeFlag(flag) {
             currentFlags = currentFlags.filter(f => f !== flag);
@@ -284,11 +285,13 @@ export function generateCommandEditorHtml(command: CommandItem): string {
 
         function performSave() {
             const command = {
+                id: originalCommand.id,
                 label: document.getElementById('label').value.trim(),
                 shell: document.getElementById('shell').value.trim(),
                 flags: currentFlags,
                 argumentPrompts: currentPrompts,
-                alwaysPrompt: document.getElementById('alwaysPrompt').checked
+                alwaysPrompt: document.getElementById('alwaysPrompt').checked,
+                folderId: originalCommand.folderId
             };
 
             if (!command.label) {

@@ -31,8 +31,9 @@ export class CommandEditorProvider {
                     case 'save':
                         try {
                             const updatedCommand = message.command;
-                            // Keep the original ID
+                            // Keep the original ID and folderId to maintain folder association
                             updatedCommand.id = command.id;
+                            updatedCommand.folderId = command.folderId;
                             // Find and update the command in the list
                             const commandList = getCommandList();
                             const index = commandList.findIndex(cmd => cmd.id === command.id);
