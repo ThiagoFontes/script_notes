@@ -228,6 +228,11 @@ body {
     color: var(--vscode-button-foreground);
 }
 
+.icon-btn.delete.confirming-first-click:hover {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-secondaryForeground);
+}
+
 .empty-message {
     color: var(--vscode-descriptionForeground);
     font-style: italic;

@@ -192,6 +192,7 @@ export function generateCommandRunnerHtml(): string {
             deleteButton.title = 'Clique novamente para confirmar exclusão';
             deleteButton.style.color = 'var(--vscode-errorForeground)';
             deleteButton.classList.add('confirming');
+            deleteButton.classList.add('confirming-first-click');
             
             // Reset button after 3 seconds if not clicked again
             const resetTimeout = setTimeout(() => {
@@ -200,6 +201,7 @@ export function generateCommandRunnerHtml(): string {
                 deleteButton.title = originalTitle;
                 deleteButton.style.color = '';
                 deleteButton.classList.remove('confirming');
+                deleteButton.classList.remove('confirming-first-click');
                 delete deleteButton.dataset.resetTimeout;
             }, 3000);
             
