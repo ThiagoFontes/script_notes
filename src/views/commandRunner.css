@@ -9,6 +9,7 @@ body {
     display: flex;
     justify-content: stretch;
     margin-bottom: 0.5em;
+    gap: 8px;
 }
 
 .header .icon-btn {
@@ -23,6 +24,7 @@ body {
     margin-bottom: 0.5em;
     padding: 0.25em 0;
     border-bottom: 1px solid var(--vscode-widget-border);
+    gap: 8px;
 }
 
 .actions-bar .icon-btn.import-btn,
