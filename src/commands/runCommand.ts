@@ -11,10 +11,10 @@ export async function runCommand(item: CommandItem): Promise<void> {
 
     // If we have prompts defined or alwaysPrompt is true, show argument selection
     if (item.argumentPrompts.length > 0 || item.alwaysPrompt) {
-        // If no prompts are defined but alwaysPrompt is true, create a default prompt
+        // Use existing prompts or empty array if none defined
         const promptsToShow = item.argumentPrompts.length > 0 ?
             item.argumentPrompts :
-            ['Enter argument'];
+            [];
 
         // Create QuickPick for argument selection
         const quickPick = vscode.window.createQuickPick();
@@ -59,7 +59,7 @@ export async function runCommand(item: CommandItem): Promise<void> {
 
         const selectedItems = await new Promise<readonly vscode.QuickPickItem[] | undefined>((resolve) => {
             let isFinalized = false;
-            
+
             // Use button to finalize selection
             quickPick.buttons = [{
                 iconPath: new vscode.ThemeIcon('check'),
@@ -95,7 +95,7 @@ export async function runCommand(item: CommandItem): Promise<void> {
                     }
                 }
             });
-            
+
             quickPick.onDidHide(() => {
                 if (!isFinalized) {
                     resolve(undefined);
