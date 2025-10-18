@@ -45,5 +45,34 @@ jobs:
       with:
         files: ${{ steps.package.outputs.filename }}
         generate_release_notes: true
+        body: |
+          ## Script Notes v${{ steps.package.outputs.version }}
+          
+          A VS Code extension to manage and run shell commands with a UI similar to the test explorer.
+          
+          ### 📥 Installation
+          
+          **Option 1: Install from VSIX**
+          ```bash
+          code --install-extension ${{ steps.package.outputs.filename }}
+          ```
+          
+          **Option 2: Install via VS Code UI**
+          1. Download the `.vsix` file below
+          2. Open VS Code
+          3. Go to Extensions view (Ctrl+Shift+X / Cmd+Shift+X)
+          4. Click the `...` menu at the top
+          5. Select "Install from VSIX..."
+          6. Choose the downloaded file
+          
+          ### ✨ Features
+          - 📁 Organize commands in folders
+          - 🔄 Drag and drop to reorder commands and folders
+          - ⚡ Run commands with custom arguments
+          - 💾 Persistent argument history
+          - 📤 Import/Export commands
+          - 🎨 Clean, integrated UI
+          
+          ---
         draft: false
         prerelease: false
