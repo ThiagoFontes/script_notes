@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { addCommand } from './addCommand.js';
 import { editCommand } from './editCommand.js';
 import { deleteCommand } from './deleteCommand.js';
-import { runCommand } from './runCommand.js';
+import { runCommand, setCommandProvider as setRunCommandProvider } from './runCommand.js';
 import { exportCommands } from './exportCommands.js';
 import { importCommands } from './importCommands.js';
 import { addFolderCommand } from './addFolder.js';
@@ -10,6 +10,9 @@ import { toggleFolderCommand, renameFolderCommand, deleteFolderCommand, moveComm
 import { reorderCommandsCommand, reorderFoldersCommand, reorderFolderCommandsCommand } from './reorderCommands.js';
 
 export function registerCommands(context: vscode.ExtensionContext, commandProvider: any): void {
+    // Set the command provider for runCommand so it can update the UI after saving new arguments
+    setRunCommandProvider(commandProvider);
+
     context.subscriptions.push(
         vscode.commands.registerCommand('scriptnotes.addCommand', () => addCommand(context, commandProvider)),
         vscode.commands.registerCommand('scriptnotes.editCommand', (item) => editCommand(item, context)),

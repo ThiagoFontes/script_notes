@@ -1,5 +1,13 @@
 import * as vscode from 'vscode';
 import { CommandItem } from '../models/CommandItem';
+import { getCommandList, setCommandList, getCommandStorage } from '../providers/CommandRunnerViewProvider';
+
+// Store reference to the command provider for updating the webview
+let commandProvider: any;
+
+export function setCommandProvider(provider: any): void {
+    commandProvider = provider;
+}
 
 export async function runCommand(item: CommandItem): Promise<void> {
     console.log('Running command:', item);
@@ -121,16 +129,49 @@ export async function runCommand(item: CommandItem): Promise<void> {
             const newArguments = customArgs.filter(arg => !item.argumentPrompts.includes(arg));
             if (newArguments.length > 0) {
                 console.log('Saving new arguments to command:', newArguments);
-                item.argumentPrompts.push(...newArguments);
+                console.log('Command before update:', JSON.stringify(item));
 
-                // Update the command in storage
-                const { getCommandList, setCommandList } = require('../providers/CommandRunnerViewProvider');
+                // Create updated command with new arguments
+                const updatedCommand: CommandItem = {
+                    ...item,
+                    argumentPrompts: [...item.argumentPrompts, ...newArguments]
+                };
+
+                // Update the command in storage persistently
+                const commandStorage = getCommandStorage();
                 const commandList = getCommandList();
+                console.log('Current command list length:', commandList.length);
+
                 const index = commandList.findIndex((cmd: CommandItem) => cmd.id === item.id);
+                console.log('Found command at index:', index);
+
                 if (index !== -1) {
-                    commandList[index] = item;
+                    // Update the command in the list
+                    commandList[index] = updatedCommand;
                     setCommandList(commandList);
-                    console.log('Command updated with new arguments');
+
+                    console.log('Command after update:', JSON.stringify(commandList[index]));
+
+                    // Save to persistent storage
+                    await commandStorage.saveCommands(commandList);
+                    console.log('Commands saved to persistent storage');
+
+                    // Show user feedback
+                    const argText = newArguments.length === 1 ? 'argument' : 'arguments';
+                    vscode.window.showInformationMessage(
+                        `Added ${newArguments.length} custom ${argText} to "${item.label}": ${newArguments.join(', ')}`
+                    );
+
+                    // Update the webview if provider is available
+                    if (commandProvider && commandProvider.updateWebview) {
+                        await commandProvider.updateWebview();
+                        console.log('Webview updated');
+                    }
+
+                    console.log('Command updated with new arguments and saved to persistent storage');
+                } else {
+                    console.error('Could not find command in list to update. Command ID:', item.id);
+                    console.error('Available command IDs:', commandList.map(cmd => cmd.id));
                 }
             }
         }
