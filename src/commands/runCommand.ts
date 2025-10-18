@@ -67,6 +67,7 @@ export async function runCommand(item: CommandItem): Promise<void> {
 
         const selectedItems = await new Promise<readonly vscode.QuickPickItem[] | undefined>((resolve) => {
             let isFinalized = false;
+            const disposables: vscode.Disposable[] = [];
 
             // Use button to finalize selection
             quickPick.buttons = [{
@@ -74,16 +75,23 @@ export async function runCommand(item: CommandItem): Promise<void> {
                 tooltip: 'Confirm selection and run command'
             }];
 
-            quickPick.onDidTriggerButton(() => {
+            const cleanup = () => {
+                disposables.forEach(d => d.dispose());
+                quickPick.dispose();
+            };
+
+            disposables.push(quickPick.onDidTriggerButton(() => {
                 if (!isFinalized) {
                     isFinalized = true;
-                    resolve(quickPick.selectedItems);
-                    quickPick.dispose();
+                    const selected = quickPick.selectedItems;
+                    cleanup();
+                    console.log('QuickPick finalized via button, selected items:', selected.length);
+                    resolve(selected);
                 }
-            });
+            }));
 
             // Handle Enter key - add custom argument if typing, otherwise finalize
-            quickPick.onDidAccept(() => {
+            disposables.push(quickPick.onDidAccept(() => {
                 const value = quickPick.value.trim();
                 if (value && !availableItems.some(item => item.label === value) && !customArgs.includes(value)) {
                     // Add custom argument
@@ -98,19 +106,25 @@ export async function runCommand(item: CommandItem): Promise<void> {
                     // No text in input, finalize selection
                     if (!isFinalized) {
                         isFinalized = true;
-                        resolve(quickPick.selectedItems);
-                        quickPick.dispose();
+                        const selected = quickPick.selectedItems;
+                        cleanup();
+                        console.log('QuickPick finalized via Enter, selected items:', selected.length);
+                        resolve(selected);
                     }
                 }
-            });
+            }));
 
-            quickPick.onDidHide(() => {
+            disposables.push(quickPick.onDidHide(() => {
                 if (!isFinalized) {
+                    isFinalized = true;
+                    cleanup();
+                    console.log('QuickPick cancelled/hidden');
                     resolve(undefined);
-                    quickPick.dispose();
                 }
-            });
+            }));
         });
+
+        console.log('QuickPick promise resolved, processing selection...');
 
         // If user cancels, abort the command
         if (!selectedItems) {
@@ -187,5 +201,18 @@ export async function runCommand(item: CommandItem): Promise<void> {
         'scriptnotes',
         new vscode.ShellExecution(fullCommand)
     );
-    vscode.tasks.executeTask(task);
+
+    // Execute the task and wait for it to complete
+    const execution = await vscode.tasks.executeTask(task);
+
+    // Wait for the task to finish
+    await new Promise<void>((resolve) => {
+        const disposable = vscode.tasks.onDidEndTask((e) => {
+            if (e.execution === execution) {
+                disposable.dispose();
+                console.log('Task completed:', item.label);
+                resolve();
+            }
+        });
+    });
 }

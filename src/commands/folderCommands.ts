@@ -84,14 +84,30 @@ export async function runFolderCommand(folderId: string, commandIds: string[]): 
 
         vscode.window.showInformationMessage(`Running ${folderCommands.length} commands from folder...`);
 
-        // Run commands sequentially
-        for (const command of folderCommands) {
+        // Run commands sequentially with proper waiting
+        for (let i = 0; i < folderCommands.length; i++) {
+            const command = folderCommands[i];
             try {
+                console.log(`Running command ${i + 1}/${folderCommands.length}: ${command.label}`);
+
                 // Use the existing runCommand functionality with the full command object
+                // This will wait for user input if needed (the QuickPick is properly awaited)
                 await vscode.commands.executeCommand('scriptnotes.runCommand', command);
+
+                console.log(`Command ${i + 1} completed: ${command.label}`);
             } catch (error) {
                 vscode.window.showWarningMessage(`Failed to run command "${command.label}": ${error instanceof Error ? error.message : String(error)}`);
-                // Continue with the next command even if one fails
+
+                // Ask user if they want to continue with remaining commands
+                const continueRunning = await vscode.window.showWarningMessage(
+                    `Command "${command.label}" failed. Continue with remaining commands?`,
+                    'Yes', 'No'
+                );
+
+                if (continueRunning !== 'Yes') {
+                    vscode.window.showInformationMessage('Stopped running folder commands.');
+                    return;
+                }
             }
         }
 
